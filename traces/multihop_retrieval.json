@@ -1,0 +1,108 @@
+{
+  "id": "multihop_retrieval_01",
+  "task_type": "multihop_retrieval",
+  "prompt": "In the internal corpus, which paper introduced speculative decoding for transformer decoding, and which later serving engine doc lists EAGLE vs n-gram as method families? Quote the hop path.",
+  "notes": "Synthetic multi-hop RAG: retrieve → follow citation → retrieve again → answer. ShareGPT chat has no retrieval graph.",
+  "expected_success": true,
+  "success_criteria": {
+    "required_tools": ["retrieve", "read_doc"],
+    "final_answer_required": true
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "retrieve",
+        "description": "Dense retrieve passages from a local corpus.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "k": { "type": "integer" }
+          },
+          "required": ["query"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_doc",
+        "description": "Read a corpus document by id.",
+        "parameters": {
+          "type": "object",
+          "properties": { "doc_id": { "type": "string" } },
+          "required": ["doc_id"]
+        }
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only from retrieved corpus documents. Name document ids you used."
+    },
+    {
+      "role": "user",
+      "content": "In the internal corpus, which paper introduced speculative decoding for transformer decoding, and which later serving engine doc lists EAGLE vs n-gram as method families? Quote the hop path."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_ret_1",
+          "name": "retrieve",
+          "arguments": {
+            "query": "speculative decoding transformer fast inference Leviathan",
+            "k": 3
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_ret_1",
+      "name": "retrieve",
+      "content": "1. doc:leviathan2023 — Fast Inference from Transformers via Speculative Decoding (ICML 2023).\n2. doc:chen2023 — Accelerating Large Language Model Decoding with Speculative Sampling.\n3. doc:vllm_spec_index — pointer: see doc:vllm_spec_methods for method families."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_read_paper",
+          "name": "read_doc",
+          "arguments": { "doc_id": "leviathan2023" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_read_paper",
+      "name": "read_doc",
+      "content": "Leviathan, Kalman, and Matias, ICML 2023. Core idea: a cheap draft model proposes γ tokens; the target verifies the prefix in one forward pass and always emits at least one guaranteed token. Acceptance length, not just throughput, is the key statistic."
+    },
+    {
+      "role": "assistant",
+      "content": "The index passage pointed at a second document for method families. Following that hop.",
+      "tool_calls": [
+        {
+          "id": "call_read_vllm",
+          "name": "read_doc",
+          "arguments": { "doc_id": "vllm_spec_methods" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_read_vllm",
+      "name": "read_doc",
+      "content": "Serving-engine taxonomy (synthetic excerpt): model-based families include EAGLE, MTP, and a separate draft model; lightweight families include n-gram and suffix decoding. These are serving *tricks* on the same target model, not new tasks."
+    },
+    {
+      "role": "assistant",
+      "content": "Hop path: `retrieve('speculative decoding …')` → `leviathan2023` → index pointer `vllm_spec_index` → `read_doc('vllm_spec_methods')`.\n\n- Introducing paper in this corpus: **Leviathan, Kalman, and Matias, “Fast Inference from Transformers via Speculative Decoding,” ICML 2023** (`doc:leviathan2023`). Chen et al. 2023 is a related speculative-sampling paper, not the first hit.\n- Method-family doc: **`doc:vllm_spec_methods`**, which lists EAGLE / MTP / draft-model vs n-gram / suffix decoding.\n\nA single-turn ShareGPT prompt cannot represent this: the second retrieve is *conditioned on the first tool observation*."
+    }
+  ]
+}

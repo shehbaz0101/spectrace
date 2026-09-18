@@ -1,0 +1,125 @@
+{
+  "id": "data_analysis_01",
+  "task_type": "data_analysis",
+  "prompt": "Load fixtures/orders.csv, report median order value by region, flag any region whose median is > 1.5× the global median, and write a one-paragraph brief for a PM. Do not hallucinate columns.",
+  "notes": "Synthetic data-analysis agent: inspect schema → compute → save artifact → brief. Mixed text + tool JSON.",
+  "expected_success": true,
+  "success_criteria": {
+    "required_tools": ["read_file", "run_python", "save_artifact"],
+    "final_answer_required": true
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a text or CSV file.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "n_lines": { "type": "integer" }
+          },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run_python",
+        "description": "Execute a short Python snippet in a sandbox and return stdout.",
+        "parameters": {
+          "type": "object",
+          "properties": { "code": { "type": "string" } },
+          "required": ["code"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "save_artifact",
+        "description": "Save a small table or figure path.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "kind": { "type": "string" }
+          },
+          "required": ["path"]
+        }
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "Inspect the file before computing. Use pandas via run_python. Save a CSV artifact of the per-region table."
+    },
+    {
+      "role": "user",
+      "content": "Load fixtures/orders.csv, report median order value by region, flag any region whose median is > 1.5× the global median, and write a one-paragraph brief for a PM. Do not hallucinate columns."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_head",
+          "name": "read_file",
+          "arguments": { "path": "fixtures/orders.csv", "n_lines": 6 }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_head",
+      "name": "read_file",
+      "content": "order_id,region,order_value_usd,channel\n1001,emea,42.0,web\n1002,na,110.5,web\n1003,apac,38.2,app\n1004,na,95.0,store\n1005,emea,41.0,app"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_py",
+          "name": "run_python",
+          "arguments": {
+            "code": "import pandas as pd\ndf = pd.read_csv('fixtures/orders.csv')\nmed = df.groupby('region')['order_value_usd'].median().sort_values(ascending=False)\nglobal_med = df['order_value_usd'].median()\nflag = med[med > 1.5 * global_med]\nprint('GLOBAL', float(global_med))\nprint(med.to_string())\nprint('FLAGGED', list(flag.index))\nmed.to_csv('/tmp/median_by_region.csv')"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_py",
+      "name": "run_python",
+      "content": "GLOBAL 42.0\nregion\nna      102.75\nemea     41.50\napac     38.20\nFLAGGED ['na']"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_save",
+          "name": "save_artifact",
+          "arguments": {
+            "path": "/tmp/median_by_region.csv",
+            "kind": "csv"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_save",
+      "name": "save_artifact",
+      "content": "saved /tmp/median_by_region.csv (3 rows)"
+    },
+    {
+      "role": "assistant",
+      "content": "Columns actually present: `order_id`, `region`, `order_value_usd`, `channel`.\n\nMedian order value by region: **NA $102.75**, EMEA $41.50, APAC $38.20. Global median is **$42.00**. Only **NA** exceeds 1.5× the global median (1.5 × 42 = 63). Artifact: `/tmp/median_by_region.csv`.\n\nPM brief: North America tickets are an outlier on median order value versus EMEA/APAC, which sit near the global median; if this CSV is representative, mix/price in NA (or a high-value channel hidden inside NA) deserves a follow-up slice by `channel` before any region-wide discount. Figures are from the fixture file, not production."
+    }
+  ]
+}

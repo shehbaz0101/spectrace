@@ -40,3 +40,6 @@ packages = ["spectrace"]
 testpaths = ["tests"]
 addopts = "-q"
 pythonpath = ["."]
+markers = [
+  "integration: live TypeSafe API (skipped unless TYPESAFE_API_KEY or TYPESAFE_KEY is set)",
+]

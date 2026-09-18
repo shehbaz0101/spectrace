@@ -130,12 +130,12 @@ Tokenizer: a deterministic ~4 characters / token stand-in. Swap later; do not mi
 ## Repository layout
 
 ```
-spectrace/            # Python package (CLI, replay, metrics, mock decoder, Jev stub)
+spectrace/            # Python package (CLI, replay, metrics, mock decoder, Jev grader)
 traces/               # 5 synthetic multi-step agent traces (JSON)
 benchmarks/           # runner entry (`python benchmarks/run.py`)
 examples/             # bake-off script + example price table
-tests/                # pytest — CLI dry-run, metrics, fixtures, Jev stub
-docs/jev.md           # optional TypeSafe AI Jev grader/router (not a draft model)
+tests/                # pytest — CLI, metrics, fixtures, Jev mock + optional live skip
+docs/jev.md           # TypeSafe AI Jev: System-1 step grader (not a draft model)
 ```
 
 CLI:
@@ -143,6 +143,7 @@ CLI:
 ```
 spectrace run --trace <file-or-dir> --method baseline|mock_speculative
 spectrace bakeoff --traces traces --methods baseline,mock_speculative
+spectrace grade --traces traces --provider mock|jev
 spectrace list-traces --traces traces
 ```
 
@@ -172,11 +173,29 @@ All are synthetic. Snippets are plausible, not live API pulls.
 
 ---
 
-## Optional: Jev (grader / router, not drafting)
+## Optional: Jev (System-1 grader, not drafting)
 
-[TypeSafe AI Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) is a System One model: **noul / choice / score**, no string generation. spectrace may later use it to grade trajectories or route the next step. It is **not** a speculative-decoding draft model.
+[TypeSafe AI Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) is a System One model: **noul / choice / score**, no string generation. The serving LLM (and `mock_speculative`) **drafts** tokens; Jev **accepts or rejects the step**. It is not a speculative-decoding draft model.
 
-The stub (`spectrace.jev.NullJev`) never hits the network. Tests fail if they require `TYPESAFE_API_KEY`. Details: [`docs/jev.md`](docs/jev.md).
+`spectrace grade` scores each assistant step and prints `token_accept` (mock speculative) vs `jev_accept` (Jev) vs `task_success`.
+
+Offline, no key:
+
+```bash
+spectrace grade --provider mock --traces traces
+spectrace grade --provider mock --traces traces --output reports --format all
+```
+
+Live Jev (not used by tests; never commit a key):
+
+```bash
+export TYPESAFE_API_KEY=...          # or TYPESAFE_KEY
+spectrace grade --provider jev --traces traces
+```
+
+`--provider jev` without a key errors clearly. `--provider mock` always works.
+
+`jev_accept` is deterministic: `tool_ok >= 0.6 and progress >= 0.5 and abort < 0.5`. Details: [`docs/jev.md`](docs/jev.md).
 
 ---
 
@@ -187,8 +206,7 @@ This is an early public scaffold. Useful follow-ups, in roughly this order:
 1. Real OpenAI-compatible replay (`SPECTRACE_BASE_URL`) behind a flag, still defaulting to mock.
 2. Import adapters for public agent logs (e.g. SWE-bench traces) with the same schema.
 3. Plug-in to a local engine’s spec-decode accept stats instead of the mock sampler.
-4. Optional Jev grader on `success` vs. structural heuristics.
-5. Price tables checked in as **examples only** — never keys.
+4. Price tables checked in as **examples only** — never keys.
 
 Please:
 

@@ -1,0 +1,22 @@
+name: test
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Test (no API keys)
+        run: pytest
+        env:
+          # Guard against accidental paid-provider use in CI.
+          SPECTRACE_BASE_URL: ""
+          SPECTRACE_API_KEY: ""
+          TYPESAFE_API_KEY: ""

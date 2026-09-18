@@ -1,4 +1,4 @@
-"""Command-line interface: ``spectrace run`` and ``spectrace bakeoff``."""
+"""Command-line interface: ``spectrace run``, ``bakeoff``, and ``grade``."""
 
 from __future__ import annotations
 
@@ -10,6 +10,21 @@ from typing import Sequence
 
 from spectrace import __version__
 from spectrace.decoding import METHODS
+from spectrace.grade import (
+    GRADE_BANNER,
+    grade_ascii_table,
+    grade_traces,
+    render_grade_json,
+    render_grade_markdown,
+    write_grade_reports,
+)
+from spectrace.jev import (
+    DEFAULT_MODEL as JEV_DEFAULT_MODEL,
+    DEFAULT_TIMEOUT_S,
+    JevError,
+    LiveJev,
+    resolve_grade_provider,
+)
 from spectrace.metrics import load_price_table
 from spectrace.providers import ProviderError, resolve_provider
 from spectrace.replay import run_bakeoff
@@ -46,6 +61,38 @@ def _build_parser() -> argparse.ArgumentParser:
 
     listed = sub.add_parser("list-traces", help="Show fixture traces without running them.")
     listed.add_argument("--traces", default="traces", help="Trace file or directory.")
+
+    grade = sub.add_parser(
+        "grade",
+        help="Score each agent step with Jev (System-1 grader, not a draft model).",
+    )
+    grade.add_argument("--traces", required=True, help="JSON trace file or directory.")
+    grade.add_argument(
+        "--provider",
+        default="mock",
+        choices=("mock", "jev"),
+        help="mock (offline, default) or jev (live TypeSafe API; needs TYPESAFE_API_KEY).",
+    )
+    grade.add_argument("--seed", type=int, default=0, help="Seed for mock_speculative token_accept.")
+    grade.add_argument("--gamma", type=int, default=5, help="Draft window for token_accept.")
+    grade.add_argument("--output", help="Directory to write grade.json and grade.md.")
+    grade.add_argument(
+        "--format",
+        default="table",
+        choices=("table", "json", "md", "all"),
+        help="Stdout format (default: table).",
+    )
+    grade.add_argument(
+        "--model",
+        default=JEV_DEFAULT_MODEL,
+        help="Jev model id for --provider jev (default jev-latest).",
+    )
+    grade.add_argument(
+        "--timeout",
+        type=float,
+        default=DEFAULT_TIMEOUT_S,
+        help="HTTP timeout seconds for --provider jev.",
+    )
     return parser
 
 
@@ -83,6 +130,28 @@ def _load_prices(path: str | None):
     return load_price_table(raw)
 
 
+def _print_grade(summary, fmt: str) -> None:
+    if fmt == "json":
+        sys.stdout.write(render_grade_json(summary))
+        return
+    if fmt == "md":
+        sys.stdout.write(render_grade_markdown(summary))
+        return
+    if fmt == "all":
+        print(GRADE_BANNER)
+        print(grade_ascii_table(summary.rows))
+        print()
+        sys.stdout.write(render_grade_markdown(summary))
+        return
+    print(GRADE_BANNER)
+    print(f"jev_accept rule: {summary.jev_accept_rule}")
+    print(grade_ascii_table(summary.rows))
+    print(
+        f"steps: {summary.n_steps}   jev_accept: {summary.n_jev_accept}/{summary.n_steps}   "
+        f"traces: {summary.n_traces}"
+    )
+
+
 def _print_summary(summary, fmt: str) -> None:
     if fmt == "json":
         sys.stdout.write(render_json(summary))
@@ -111,6 +180,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.cmd == "list-traces":
         traces = load_traces(args.traces)
         print(json.dumps(traces_summary(traces), indent=2))
+        return 0
+
+    if args.cmd == "grade":
+        traces = load_traces(args.traces)
+        try:
+            grader = resolve_grade_provider(args.provider)
+        except JevError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        if args.provider == "jev" and isinstance(grader, LiveJev):
+            grader.model = args.model
+            grader.timeout = args.timeout
+            model_label = args.model
+        else:
+            model_label = "mock"
+        try:
+            summary = grade_traces(
+                traces,
+                grader,
+                provider=args.provider,
+                model=model_label,
+                seed=args.seed,
+                gamma=args.gamma,
+            )
+        except JevError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        _print_grade(summary, args.format)
+        if args.output:
+            json_path, md_path = write_grade_reports(summary, args.output, stem="grade")
+            print(f"wrote {json_path}")
+            print(f"wrote {md_path}")
         return 0
 
     if args.cmd == "run":

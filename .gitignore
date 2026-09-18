@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+pip-wheel-metadata/
+
+# Test / type / lint
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Tool output
+reports/
+spectrace-out/
+*.log
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+credentials.json
+secrets.json
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spectrace"
+version = "0.1.0"
+description = "Bake-off harness for speculative decoding and serving tricks on multi-step agent traces."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Shehbaz Pathan" }]
+keywords = ["speculative-decoding", "llm-serving", "agents", "benchmarks"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+spectrace = "spectrace.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/shehbaz0101/spectrace"
+Repository = "https://github.com/shehbaz0101/spectrace"
+Issues = "https://github.com/shehbaz0101/spectrace/issues"
+
+[tool.setuptools]
+packages = ["spectrace"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]

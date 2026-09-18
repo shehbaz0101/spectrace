@@ -1,0 +1,155 @@
+{
+  "id": "travel_planner_01",
+  "task_type": "constrained_planning",
+  "prompt": "Plan a 3-day weekend in Lisbon for two people, arriving Friday after 18:00 local, budget €900 excluding flights, no car, vegetarian dinners. Return a day-by-day outline that respects the constraints.",
+  "notes": "Synthetic constraint-checking agent: search → filter → verify budget. Tool JSON is argument-heavy (hurts draft accept rate in the mock).",
+  "expected_success": true,
+  "success_criteria": {
+    "required_tools": ["search_stays", "search_eats", "check_constraints"],
+    "final_answer_required": true
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "search_stays",
+        "description": "Search lodgings.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": { "type": "string" },
+            "checkin": { "type": "string" },
+            "checkout": { "type": "string" },
+            "guests": { "type": "integer" },
+            "max_eur": { "type": "number" }
+          },
+          "required": ["city", "checkin", "checkout"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_eats",
+        "description": "Search restaurants.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": { "type": "string" },
+            "diet": { "type": "string" },
+            "meal": { "type": "string" },
+            "limit": { "type": "integer" }
+          },
+          "required": ["city"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "check_constraints",
+        "description": "Validate a plan object against user constraints.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "plan": { "type": "object" },
+            "constraints": { "type": "object" }
+          },
+          "required": ["plan", "constraints"]
+        }
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "Respect every user constraint. Call check_constraints before the final outline."
+    },
+    {
+      "role": "user",
+      "content": "Plan a 3-day weekend in Lisbon for two people, arriving Friday after 18:00 local, budget €900 excluding flights, no car, vegetarian dinners. Return a day-by-day outline that respects the constraints."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_stays",
+          "name": "search_stays",
+          "arguments": {
+            "city": "Lisbon",
+            "checkin": "2026-10-02",
+            "checkout": "2026-10-05",
+            "guests": 2,
+            "max_eur": 540
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_stays",
+      "name": "search_stays",
+      "content": "1) Alfama walk-up studio, €79/night, 2 guests, metro 8 min, no parking needed.\n2) Parque das Nações hotel, €140/night, includes breakfast.\n3) Cascais apartment, €95/night — requires train; still no car."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_eats",
+          "name": "search_eats",
+          "arguments": {
+            "city": "Lisbon",
+            "diet": "vegetarian",
+            "meal": "dinner",
+            "limit": 5
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_eats",
+      "name": "search_eats",
+      "content": "Fri: Jardim das Cerejas (Baixa) veg tasting €22pp.\nSat: Psi (Alfama) vegan tasting €28pp.\nSun: Time Out Market veg stalls ~€18pp. All walkable / metro."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_check",
+          "name": "check_constraints",
+          "arguments": {
+            "plan": {
+              "stay": "Alfama walk-up studio",
+              "nights": 3,
+              "lodging_eur": 237,
+              "dinners_eur": 136,
+              "transit": "metro/walk",
+              "friday_start": "after 18:00"
+            },
+            "constraints": {
+              "party_size": 2,
+              "budget_eur_ex_flights": 900,
+              "no_car": true,
+              "vegetarian_dinners": true,
+              "arrive_after": "18:00"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_check",
+      "name": "check_constraints",
+      "content": "PASS. lodging 237 + dinners 136 + misc buffer 80 = 453 EUR estimated on-ground, under 900. Friday dinner only after 18:00. No car legs."
+    },
+    {
+      "role": "assistant",
+      "content": "Day-by-day (synthetic; constraint-checked):\n\n**Stay:** Alfama walk-up studio, 2 guests, €79 × 3 = €237, metro/walk, no car.\n\n- **Friday (after 18:00):** check in; dinner at Jardim das Cerejas (~€44). No sightseeing that needs daylight.\n- **Saturday:** tram/metro to Baixa & waterfront (walkable core); dinner at Psi (~€56).\n- **Sunday:** Time Out Market vegetarian stalls (~€36); checkout-friendly timing.\n\nOn-ground estimate ~€453 including a small buffer, **under €900 excluding flights**. Vegetarian dinners only. `check_constraints` returned PASS.\n\nFailure modes a grader should watch for on this task type: budget unit errors, arriving before 18:00 on Friday, inserting a car/taxi-only leg, or skipping the constraint tool."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "mock-local": {
+    "input_per_million": 0.0,
+    "output_per_million": 0.0,
+    "draft_per_million": 0.0
+  },
+  "example-target": {
+    "input_per_million": 0.15,
+    "output_per_million": 0.60,
+    "draft_per_million": 0.02
+  }
+}

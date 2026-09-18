@@ -1,0 +1,155 @@
+{
+  "id": "code_fix_01",
+  "task_type": "code_fix",
+  "prompt": "tests/test_pricing.py fails: estimate_cost() returns 0.15 instead of 0.00015 for 1000 tokens at $0.15 / million. Find the bug, patch it, re-run tests.",
+  "notes": "Synthetic SWE-style loop: read → test (fail) → patch → test (pass). Includes a recovered tool error.",
+  "expected_success": true,
+  "success_criteria": {
+    "required_tools": ["read_file", "run_tests", "apply_patch"],
+    "final_answer_required": true
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a repository file.",
+        "parameters": {
+          "type": "object",
+          "properties": { "path": { "type": "string" } },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run_tests",
+        "description": "Run pytest on a path.",
+        "parameters": {
+          "type": "object",
+          "properties": { "path": { "type": "string" } },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "apply_patch",
+        "description": "Apply a unified diff to the working tree.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "diff": { "type": "string" }
+          },
+          "required": ["path", "diff"]
+        }
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a coding agent. Reproduce the failing test, inspect the implementation, patch, and re-run. Do not commit."
+    },
+    {
+      "role": "user",
+      "content": "tests/test_pricing.py fails: estimate_cost() returns 0.15 instead of 0.00015 for 1000 tokens at $0.15 / million. Find the bug, patch it, re-run tests."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_read_test",
+          "name": "read_file",
+          "arguments": { "path": "tests/test_pricing.py" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_read_test",
+      "name": "read_file",
+      "content": "def test_per_million_not_per_token():\n    assert estimate_cost(tokens_in=1000, rate=0.15) == pytest.approx(0.00015)\n"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_read_impl",
+          "name": "read_file",
+          "arguments": { "path": "src/pricing.py" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_read_impl",
+      "name": "read_file",
+      "content": "def estimate_cost(tokens_in: int, rate: float) -> float:\n    # BUG: treats `rate` as USD per token instead of USD per million tokens.\n    return tokens_in * rate\n"
+    },
+    {
+      "role": "assistant",
+      "content": "Reproducing the failure before editing.",
+      "tool_calls": [
+        {
+          "id": "call_test_before",
+          "name": "run_tests",
+          "arguments": { "path": "tests/test_pricing.py" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_test_before",
+      "name": "run_tests",
+      "error": true,
+      "content": "FAILED tests/test_pricing.py::test_per_million_not_per_token — AssertionError: 150.0 != 0.00015 ± 1.5e-7"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_patch",
+          "name": "apply_patch",
+          "arguments": {
+            "path": "src/pricing.py",
+            "diff": "--- a/src/pricing.py\n+++ b/src/pricing.py\n@@ -1,3 +1,3 @@\n def estimate_cost(tokens_in: int, rate: float) -> float:\n-    return tokens_in * rate\n+    return (tokens_in / 1_000_000.0) * rate\n"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_patch",
+      "name": "apply_patch",
+      "content": "applied 1 hunk to src/pricing.py"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_test_after",
+          "name": "run_tests",
+          "arguments": { "path": "tests/test_pricing.py" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_test_after",
+      "name": "run_tests",
+      "content": "1 passed in 0.04s"
+    },
+    {
+      "role": "assistant",
+      "content": "Root cause: `estimate_cost` multiplied token count by a *per-million* USD rate, so 1000 tokens at $0.15/M produced 150 instead of 0.00015.\n\nFix: divide by 1e6 (`(tokens_in / 1_000_000.0) * rate`) in `src/pricing.py`. First pytest run failed (reproduced); after the patch, `tests/test_pricing.py` is green (1 passed)."
+    }
+  ]
+}

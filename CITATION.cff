@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: If you use spectrace, please cite it as below.
+title: spectrace
+abstract: >
+  Reproducible bake-off harness for measuring speculative decoding and other
+  serving tricks on multi-step agent traces (not ShareGPT chat). Reports wall
+  latency, draft accept rate, tokens, cost per successful task, and failure modes.
+type: software
+authors:
+  - family-names: Pathan
+    given-names: Shehbaz
+    email: shehbazp001@gmail.com
+repository-code: https://github.com/shehbaz0101/spectrace
+license: MIT
+version: 0.1.0
+date-released: "2026-09-18"
+keywords:
+  - speculative-decoding
+  - llm-serving
+  - agents
+  - evaluation
+  - traces

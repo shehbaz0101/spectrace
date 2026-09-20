@@ -135,7 +135,8 @@ traces/               # 5 synthetic multi-step agent traces (JSON)
 benchmarks/           # runner entry (`python benchmarks/run.py`)
 examples/             # bake-off script + example price table
 tests/                # pytest — CLI, metrics, fixtures, Jev mock + optional live skip
-docs/jev.md           # TypeSafe AI Jev: System-1 step grader (not a draft model)
+docs/                 # Jev notes, LIVE grade JSON, dual-brain demo figure
+scripts/              # optional figure redraw (matplotlib; not a CI dependency)
 ```
 
 CLI:
@@ -196,6 +197,22 @@ spectrace grade --provider jev --traces traces
 `--provider jev` without a key errors clearly. `--provider mock` always works.
 
 `jev_accept` is deterministic: `tool_ok >= 0.6 and progress >= 0.5 and abort < 0.5`. Details: [`docs/jev.md`](docs/jev.md).
+
+---
+
+## Demo: dual-brain accept
+
+The serving path (`mock_speculative`) drafts tokens. [TypeSafe Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) grades the *step*. Those are different acceptors: a draft-token rate is not a semantic pass.
+
+The figure is one real `spectrace grade --provider jev` run on the five fixture traces (2026-09-20): **22/22** steps Jev-gated accept and **5/5** traces structurally successful, while `token_accept` from the local mock decoder still ranges **0.18–0.72**. Jev did not draft those tokens, and `token_accept` is not a GPU measurement.
+
+![Dual-brain accept: LIVE TypeSafe Jev vs mock_speculative token_accept on five agent traces](docs/dual-brain-accept.png)
+
+Source JSON: [`docs/live-jev-grade-20260920.json`](docs/live-jev-grade-20260920.json). Optional redraw (`pip install matplotlib`; not required for `pytest`):
+
+```bash
+python scripts/plot_dual_brain.py
+```
 
 ---
 

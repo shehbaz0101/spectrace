@@ -12,6 +12,18 @@ FIXTURE_BANNER = (
     "**FIXTURE / SIMULATED** — numbers come from the offline mock decoder, "
     "not from GPUs or paid APIs. Do not cite them as hardware results."
 )
+LIVE_BANNER = (
+    "**LIVE OpenAI-compat draft/serve** — wall latency (and usage tokens when "
+    "the server reports them) come from chat/completions. Task success is still "
+    "the recorded fixture. `accept_rate` remains the mock decoder. "
+    "Jev is not used here (`spectrace grade` is the System-1 acceptor)."
+)
+
+
+def _banner_for(summary: BakeoffSummary) -> str:
+    if any(r.provider == "openai-compat" for r in summary.runs):
+        return LIVE_BANNER
+    return FIXTURE_BANNER
 
 
 def _fmt_rate(value: float | None) -> str:
@@ -73,7 +85,7 @@ def render_markdown(summary: BakeoffSummary, *, title: str = "spectrace bake-off
         [
             f"# {title}",
             "",
-            FIXTURE_BANNER,
+            _banner_for(summary),
             "",
             markdown_table(summary.runs),
             "",
@@ -89,7 +101,7 @@ def render_markdown(summary: BakeoffSummary, *, title: str = "spectrace bake-off
 
 def render_json(summary: BakeoffSummary) -> str:
     payload: dict[str, Any] = summary.to_dict()
-    payload["banner"] = FIXTURE_BANNER
+    payload["banner"] = _banner_for(summary)
     return json.dumps(payload, indent=2) + "\n"
 
 

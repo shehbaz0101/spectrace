@@ -20,9 +20,9 @@ Speculative decoding accepts or rejects **draft tokens**. Jev accepts or rejects
 | Job | Speed up **token generation** on the target LLM | Make a **calibrated decision** about state |
 | Output | Tokens (then verified) | noul / choice / score |
 | Failure mode | Draft prefix rejected, JSON broken mid-argument | Low noul / abort / escalate-to-human |
-| spectrace role | `--method mock_speculative` (`token_accept`) | `spectrace grade` (`jev_accept`) |
+| spectrace role | `--method mock_speculative` (`token_accept`) or `--provider openai-compat` (live draft/serve) | `spectrace grade` (`jev_accept`) |
 
-Do not wire Jev as a draft model. A System One model cannot propose the next tool-call JSON.
+Do not wire Jev as a draft model. A System One model cannot propose the next tool-call JSON. Live token generation is the OpenAI-compatible path (`--provider openai-compat` + `SPECTRACE_BASE_URL`); Jev still only accepts or rejects the step.
 
 ## Per-step questions
 
@@ -109,6 +109,7 @@ spectrace grade --provider jev --traces traces
 - `MockJev` answers the step questions locally with deterministic heuristics (schema names, required args, exact-repeat loops). No HTTP.
 - `LiveJev.evaluate()` refuses to run without `TYPESAFE_API_KEY` / `TYPESAFE_KEY`.
 - Serving bake-offs (`baseline` vs `mock_speculative`) do not call Jev.
-- `@pytest.mark.integration` live tests skip unless a key is set.
+- `--provider openai-compat` is System-2 draft/serve, not a Jev provider.
+- `@pytest.mark.integration` live tests skip unless a key / `SPECTRACE_BASE_URL` is set.
 
 See `spectrace/jev.py` and `spectrace/grade.py`.

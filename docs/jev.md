@@ -11,7 +11,7 @@ The dual-brain picture for spectrace:
 
 Speculative decoding accepts or rejects **draft tokens**. Jev accepts or rejects the **step** (tool call or assistant message) against the goal and history. Those are different layers. A high `token_accept` on a looping `search` call can still be a `jev_accept=no`.
 
-`spectrace grade` scores every assistant step with both signals and compares them to structural `task_success`.
+`spectrace grade` scores every assistant step with both signals and compares them to structural `task_success`. A tweetable snapshot of one LIVE Jev run (mock `token_accept`, real nouls) lives in [`docs/dual-brain-accept.png`](dual-brain-accept.png).
 
 ## What Jev is *not*
 

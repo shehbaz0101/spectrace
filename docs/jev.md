@@ -11,7 +11,16 @@ The dual-brain picture for spectrace:
 
 Speculative decoding accepts or rejects **draft tokens**. Jev accepts or rejects the **step** (tool call or assistant message) against the goal and history. Those are different layers. A high `token_accept` on a looping `search` call can still be a `jev_accept=no`.
 
-`spectrace grade` scores every assistant step with both signals and compares them to structural `task_success`. A tweetable snapshot of one LIVE Jev run (mock `token_accept`, real nouls) lives in [`docs/dual-brain-accept.png`](dual-brain-accept.png).
+`spectrace grade` scores every assistant step with both signals and compares them to gold `expected_ok` and structural `task_success`.
+
+Two checked-in LIVE runs (real nouls, simulated `token_accept`, no key in the file):
+
+| file | when | what it shows |
+| --- | --- | --- |
+| [`live-jev-grade-20260920.json`](live-jev-grade-20260920.json) | 2026-09-20 | 5 happy traces, 22/22 accepts. No rejection to see. |
+| [`live-jev-grade-15traces-20261010.json`](live-jev-grade-15traces-20261010.json) | 2026-10-10 00:10 EDT | 15 traces, 49 steps. LIVE Jev P=R=F1=1.000 (tp 29, fp 0, tn 20, fn 0). Caught 11/11 gold-bad steps with `token_accept ≥ 0.5`. |
+
+On the 15-trace run, accept/reject matches offline MockJev on every step. The nouls do not (30 distinct live `tool_ok` values, 11 for MockJev). The figure [`dual-brain-accept.png`](dual-brain-accept.png) is drawn from that LIVE file. `spectrace demo --from-report docs/live-jev-grade-15traces-20261010.json` rebuilds the HTML with no key.
 
 ## What Jev is *not*
 

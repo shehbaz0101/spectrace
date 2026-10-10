@@ -23,7 +23,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4"]
+dev = ["pytest>=7.4", "ruff>=0.6"]
 
 [project.scripts]
 spectrace = "spectrace.cli:main"
@@ -35,6 +35,13 @@ Issues = "https://github.com/shehbaz0101/spectrace/issues"
 
 [tool.setuptools]
 packages = ["spectrace"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E9", "F"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

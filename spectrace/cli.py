@@ -1,4 +1,4 @@
-"""Command-line interface: ``spectrace run``, ``bakeoff``, and ``grade``."""
+"""Command-line interface: ``spectrace run``, ``bakeoff``, ``grade``, and ``demo``."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import Sequence
 
 from spectrace import __version__
 from spectrace.decoding import METHODS
+from spectrace.demo import DemoError, run_demo
 from spectrace.grade import (
     GRADE_BANNER,
     grade_ascii_table,
@@ -32,7 +33,7 @@ from spectrace.openai_compat import OpenAICompatClient, OpenAICompatError
 from spectrace.providers import ProviderError, is_live_provider, resolve_provider
 from spectrace.replay import run_bakeoff
 from spectrace.report import ascii_table, render_json, render_markdown, write_reports
-from spectrace.traces import load_traces, traces_summary
+from spectrace.traces import TraceError, load_traces, traces_summary
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -101,6 +102,36 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=DEFAULT_TIMEOUT_S,
         help="HTTP timeout seconds for --provider jev.",
+    )
+
+    demo = sub.add_parser(
+        "demo",
+        help="Write a self-contained HTML report (offline $0 by default; no server).",
+    )
+    demo.add_argument("--traces", default="traces", help="Trace file or directory (default: traces).")
+    demo.add_argument(
+        "--output",
+        default="reports/demo/index.html",
+        help="HTML path to write (default: reports/demo/index.html).",
+    )
+    demo.add_argument(
+        "--from-report",
+        help="Render this grade JSON instead of grading. No API key. "
+        "Use docs/live-jev-grade-15traces-20261010.json for the committed LIVE numbers.",
+    )
+    demo.add_argument(
+        "--live",
+        action="store_true",
+        help="Grade with --provider jev. Requires TYPESAFE_API_KEY or TYPESAFE_KEY. "
+        "Bake-off latency stays simulated. Errors clearly when no key is set.",
+    )
+    demo.add_argument("--seed", type=int, default=0, help="Seed for mock_speculative.")
+    demo.add_argument("--gamma", type=int, default=5, help="Draft window for mock_speculative.")
+    demo.add_argument(
+        "--token-threshold",
+        type=float,
+        default=0.5,
+        help="token_accept at or above this counts as a token-acceptor yes (default 0.5).",
     )
     return parser
 
@@ -212,6 +243,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
 
+    if args.cmd == "demo":
+        try:
+            run_demo(
+                traces=args.traces,
+                output=args.output,
+                from_report=args.from_report,
+                live=args.live,
+                seed=args.seed,
+                gamma=args.gamma,
+                token_threshold=args.token_threshold,
+            )
+        except (DemoError, FileNotFoundError, TraceError, JevError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        return 0
+
     if args.cmd == "list-traces":
         traces = load_traces(args.traces)
         print(json.dumps(traces_summary(traces), indent=2))
@@ -253,14 +300,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.cmd == "run":
         traces = load_traces(args.trace)
         methods = [args.method]
-        label = Path(args.trace).name
     else:
         traces = load_traces(args.traces)
         methods = [m.strip() for m in args.methods.split(",") if m.strip()]
         unknown = [m for m in methods if m not in METHODS]
         if unknown:
             parser.error(f"unknown method(s): {unknown}")
-        label = Path(args.traces).name
 
     if args.dry_run:
         print(

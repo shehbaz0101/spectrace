@@ -13,6 +13,8 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: pip install -e ".[dev]"
+      - name: Lint (no API keys)
+        run: ruff check spectrace tests scripts
       - name: Test (no API keys)
         run: pytest
         env:
@@ -20,3 +22,15 @@ jobs:
           SPECTRACE_BASE_URL: ""
           SPECTRACE_API_KEY: ""
           TYPESAFE_API_KEY: ""
+          TYPESAFE_KEY: ""
+      - name: Demo smoke (offline, $0)
+        run: |
+          spectrace demo --output "$RUNNER_TEMP/demo/index.html"
+          spectrace demo --from-report docs/live-jev-grade-15traces-20261010.json --output "$RUNNER_TEMP/demo-live/index.html"
+          test -s "$RUNNER_TEMP/demo/index.html"
+          test -s "$RUNNER_TEMP/demo-live/index.html"
+        env:
+          SPECTRACE_BASE_URL: ""
+          SPECTRACE_API_KEY: ""
+          TYPESAFE_API_KEY: ""
+          TYPESAFE_KEY: ""

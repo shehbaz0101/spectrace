@@ -10,6 +10,12 @@ python examples/bakeoff.py
 # JSON + markdown files:
 spectrace bakeoff --traces traces --output reports --format all
 
+# One HTML page: simulated bake-off + mock grade ($0, no key):
+spectrace demo
+
+# Same page from the committed LIVE Jev report (no key):
+spectrace demo --from-report docs/live-jev-grade-15traces-20261010.json
+
 # Grade each step with the local Jev mock (token_accept vs jev_accept):
 spectrace grade --provider mock --traces traces
 

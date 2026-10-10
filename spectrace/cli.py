@@ -14,6 +14,7 @@ from spectrace.grade import (
     GRADE_BANNER,
     grade_ascii_table,
     grade_traces,
+    render_gold_ascii,
     render_grade_json,
     render_grade_markdown,
     write_grade_reports,
@@ -77,6 +78,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     grade.add_argument("--seed", type=int, default=0, help="Seed for mock_speculative token_accept.")
     grade.add_argument("--gamma", type=int, default=5, help="Draft window for token_accept.")
+    grade.add_argument(
+        "--token-threshold",
+        type=float,
+        default=0.5,
+        help="token_accept at or above this counts as a token-acceptor yes (default 0.5).",
+    )
     grade.add_argument("--output", help="Directory to write grade.json and grade.md.")
     grade.add_argument(
         "--format",
@@ -168,6 +175,10 @@ def _print_grade(summary, fmt: str) -> None:
         f"steps: {summary.n_steps}   jev_accept: {summary.n_jev_accept}/{summary.n_steps}   "
         f"traces: {summary.n_traces}"
     )
+    comparison = summary.extra.get("gold_comparison")
+    if comparison:
+        print()
+        print(render_gold_ascii(comparison))
 
 
 def _print_summary(summary, fmt: str) -> None:
@@ -227,6 +238,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 model=model_label,
                 seed=args.seed,
                 gamma=args.gamma,
+                token_threshold=args.token_threshold,
             )
         except JevError as exc:
             print(f"error: {exc}", file=sys.stderr)

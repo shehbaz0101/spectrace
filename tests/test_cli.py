@@ -19,7 +19,8 @@ def test_cli_dry_run_directory(traces_dir, capsys):
     code = main(["run", "--trace", str(traces_dir), "--method", "mock_speculative", "--dry-run"])
     assert code == 0
     out = capsys.readouterr().out
-    assert "5 trace(s)" in out
+    n_json = len(list(traces_dir.glob("*.json")))
+    assert f"{n_json} trace(s)" in out
 
 
 def test_cli_run_writes_json_and_markdown(traces_dir, tmp_path, capsys):
@@ -64,7 +65,9 @@ def test_list_traces(traces_dir, capsys):
     code = main(["list-traces", "--traces", str(traces_dir)])
     assert code == 0
     rows = json.loads(capsys.readouterr().out)
-    assert len(rows) == 5
+    assert len(rows) == len(list(traces_dir.glob("*.json")))
+    assert any(row["failure_mode"] == "destructive_action" for row in rows)
+    assert any(row["task_success"] is True and row["id"] == "code_fix_01" for row in rows)
 
 
 def test_cli_refuses_live_provider_without_url(traces_dir, monkeypatch, capsys):

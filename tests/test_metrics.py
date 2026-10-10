@@ -8,13 +8,31 @@ from spectrace.decoding import (
     decode_assistant_text,
     stable_seed,
 )
-from spectrace.metrics import accept_rate, estimate_cost, load_price_table, lookup_rate
+from spectrace.metrics import (
+    accept_rate,
+    confusion_from_labels,
+    estimate_cost,
+    load_price_table,
+    lookup_rate,
+)
 from spectrace.replay import run_bakeoff, run_trace
 from spectrace.traces import load_traces
 
 
 def test_accept_rate_none_when_no_drafts():
     assert accept_rate(0, 0) is None
+
+
+def test_confusion_precision_recall_f1():
+    # gold: ok, ok, bad, bad
+    # pred: ok, bad, ok, bad  → tp=1 fp=1 tn=1 fn=1
+    cm = confusion_from_labels([True, True, False, False], [True, False, True, False])
+    assert (cm.tp, cm.fp, cm.tn, cm.fn) == (1, 1, 1, 1)
+    assert cm.precision == 0.5
+    assert cm.recall == 0.5
+    assert cm.f1 == 0.5
+    empty = confusion_from_labels([], [])
+    assert empty.precision is None and empty.f1 is None
 
 
 def test_default_cost_is_zero():
@@ -95,8 +113,12 @@ def test_speculative_faster_than_baseline_on_fixtures(traces_dir):
 
 
 def test_bakeoff_aggregates_cost_per_success(traces_dir):
+    traces = load_traces(traces_dir)
+    n_ok = sum(1 for t in traces if t.structural_success()[0])
     summary = run_bakeoff(str(traces_dir), ["baseline", "mock_speculative"])
-    assert summary.n_success == len(summary.runs) == 10
+    assert len(summary.runs) == len(traces) * 2
+    assert summary.n_success == n_ok * 2
+    assert n_ok < len(traces)
     assert summary.cost_per_successful_task_usd == 0.0
     methods = {r.method for r in summary.runs}
     assert methods == {"baseline", "mock_speculative"}

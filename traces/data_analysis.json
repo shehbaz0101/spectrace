@@ -2,10 +2,17 @@
   "id": "data_analysis_01",
   "task_type": "data_analysis",
   "prompt": "Load fixtures/orders.csv, report median order value by region, flag any region whose median is > 1.5× the global median, and write a one-paragraph brief for a PM. Do not hallucinate columns.",
-  "notes": "Synthetic data-analysis agent: inspect schema → compute → save artifact → brief. Mixed text + tool JSON.",
+  "provenance": "synthetic-but-realistic",
+  "failure_mode": null,
+  "task_success": true,
+  "notes": "Synthetic-but-realistic happy path. data-analysis agent: inspect schema → compute → save artifact → brief. Mixed text + tool JSON.",
   "expected_success": true,
   "success_criteria": {
-    "required_tools": ["read_file", "run_python", "save_artifact"],
+    "required_tools": [
+      "read_file",
+      "run_python",
+      "save_artifact"
+    ],
     "final_answer_required": true
   },
   "tools": [
@@ -17,10 +24,16 @@
         "parameters": {
           "type": "object",
           "properties": {
-            "path": { "type": "string" },
-            "n_lines": { "type": "integer" }
+            "path": {
+              "type": "string"
+            },
+            "n_lines": {
+              "type": "integer"
+            }
           },
-          "required": ["path"]
+          "required": [
+            "path"
+          ]
         }
       }
     },
@@ -31,8 +44,14 @@
         "description": "Execute a short Python snippet in a sandbox and return stdout.",
         "parameters": {
           "type": "object",
-          "properties": { "code": { "type": "string" } },
-          "required": ["code"]
+          "properties": {
+            "code": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code"
+          ]
         }
       }
     },
@@ -44,10 +63,16 @@
         "parameters": {
           "type": "object",
           "properties": {
-            "path": { "type": "string" },
-            "kind": { "type": "string" }
+            "path": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            }
           },
-          "required": ["path"]
+          "required": [
+            "path"
+          ]
         }
       }
     }
@@ -64,11 +89,15 @@
     {
       "role": "assistant",
       "content": "",
+      "expected_ok": true,
       "tool_calls": [
         {
           "id": "call_head",
           "name": "read_file",
-          "arguments": { "path": "fixtures/orders.csv", "n_lines": 6 }
+          "arguments": {
+            "path": "fixtures/orders.csv",
+            "n_lines": 6
+          }
         }
       ]
     },
@@ -81,6 +110,7 @@
     {
       "role": "assistant",
       "content": "",
+      "expected_ok": true,
       "tool_calls": [
         {
           "id": "call_py",
@@ -100,6 +130,7 @@
     {
       "role": "assistant",
       "content": "",
+      "expected_ok": true,
       "tool_calls": [
         {
           "id": "call_save",
@@ -119,7 +150,8 @@
     },
     {
       "role": "assistant",
-      "content": "Columns actually present: `order_id`, `region`, `order_value_usd`, `channel`.\n\nMedian order value by region: **NA $102.75**, EMEA $41.50, APAC $38.20. Global median is **$42.00**. Only **NA** exceeds 1.5× the global median (1.5 × 42 = 63). Artifact: `/tmp/median_by_region.csv`.\n\nPM brief: North America tickets are an outlier on median order value versus EMEA/APAC, which sit near the global median; if this CSV is representative, mix/price in NA (or a high-value channel hidden inside NA) deserves a follow-up slice by `channel` before any region-wide discount. Figures are from the fixture file, not production."
+      "content": "Columns actually present: `order_id`, `region`, `order_value_usd`, `channel`.\n\nMedian order value by region: **NA $102.75**, EMEA $41.50, APAC $38.20. Global median is **$42.00**. Only **NA** exceeds 1.5× the global median (1.5 × 42 = 63). Artifact: `/tmp/median_by_region.csv`.\n\nPM brief: North America tickets are an outlier on median order value versus EMEA/APAC, which sit near the global median; if this CSV is representative, mix/price in NA (or a high-value channel hidden inside NA) deserves a follow-up slice by `channel` before any region-wide discount. Figures are from the fixture file, not production.",
+      "expected_ok": true
     }
   ]
 }

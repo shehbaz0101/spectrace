@@ -11,7 +11,7 @@ from spectrace.traces import AgentTrace, Message, SuccessCriteria, ToolCall, loa
 def test_grade_traces_mock_covers_all_fixture_steps(traces_dir):
     traces = load_traces(traces_dir)
     summary = grade_traces(traces, MockJev(), provider="mock", model="mock")
-    assert summary.n_traces == 5
+    assert summary.n_traces == len(traces)
     assert summary.n_steps == sum(len(t.assistant_turns) for t in traces)
     assert summary.n_steps > 10
     assert summary.jev_accept_rule
@@ -44,7 +44,11 @@ def test_grade_cli_mock_prints_comparison_table(traces_dir, capsys):
     for col in ("trace", "step", "token_accept", "jev_accept", "tool_ok", "progress", "abort"):
         assert col in out
     assert "task_success" in out
+    assert "expected_ok" in out
     assert "jev_accept rule" in out
+    assert "MOCK" in out
+    assert "high token_accept on bad steps" in out
+    assert "spectrace grade --provider jev" in out
     for tid in (
         "research_qa_01",
         "code_fix_01",

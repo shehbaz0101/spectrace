@@ -1,0 +1,107 @@
+{
+  "id": "loop_search_01",
+  "task_type": "research_qa",
+  "prompt": "Find the 2024 population of Lisbon and cite one source.",
+  "provenance": "synthetic-but-realistic",
+  "failure_mode": "repeated_tool_call",
+  "task_success": false,
+  "expected_success": false,
+  "notes": "Synthetic-but-realistic. The agent issues the same web_search three times and never answers. Failure mode: repeated_tool_call.",
+  "success_criteria": {
+    "required_tools": ["web_search", "web_fetch"],
+    "final_answer_required": true
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "web_search",
+        "description": "Search the web.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "num_results": { "type": "integer" }
+          },
+          "required": ["query"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "web_fetch",
+        "description": "Fetch a URL.",
+        "parameters": {
+          "type": "object",
+          "properties": { "url": { "type": "string" } },
+          "required": ["url"]
+        }
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "Use tools. Do not repeat an identical search. Cite a source in the final answer."
+    },
+    {
+      "role": "user",
+      "content": "Find the 2024 population of Lisbon and cite one source."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "expected_ok": true,
+      "tool_calls": [
+        {
+          "id": "call_search_1",
+          "name": "web_search",
+          "arguments": { "query": "Lisbon population 2024", "num_results": 3 }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_search_1",
+      "name": "web_search",
+      "content": "[1] Lisbon municipal estimate 2024: about 545,000 city residents. Source: Câmara Municipal de Lisboa statistical note (synthetic excerpt)."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "expected_ok": false,
+      "tool_calls": [
+        {
+          "id": "call_search_2",
+          "name": "web_search",
+          "arguments": { "query": "Lisbon population 2024", "num_results": 3 }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_search_2",
+      "name": "web_search",
+      "content": "[1] Lisbon municipal estimate 2024: about 545,000 city residents. Source: Câmara Municipal de Lisboa statistical note (synthetic excerpt)."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "expected_ok": false,
+      "tool_calls": [
+        {
+          "id": "call_search_3",
+          "name": "web_search",
+          "arguments": { "query": "Lisbon population 2024", "num_results": 3 }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_search_3",
+      "name": "web_search",
+      "content": "[1] Lisbon municipal estimate 2024: about 545,000 city residents. Source: Câmara Municipal de Lisboa statistical note (synthetic excerpt)."
+    }
+  ]
+}

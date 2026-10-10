@@ -2,10 +2,17 @@
   "id": "code_fix_01",
   "task_type": "code_fix",
   "prompt": "tests/test_pricing.py fails: estimate_cost() returns 0.15 instead of 0.00015 for 1000 tokens at $0.15 / million. Find the bug, patch it, re-run tests.",
-  "notes": "Synthetic SWE-style loop: read → test (fail) → patch → test (pass). Includes a recovered tool error.",
+  "provenance": "synthetic-but-realistic",
+  "failure_mode": null,
+  "task_success": true,
+  "notes": "Synthetic-but-realistic happy path. SWE-style loop: read → test (fail) → patch → test (pass). Includes a recovered tool error.",
   "expected_success": true,
   "success_criteria": {
-    "required_tools": ["read_file", "run_tests", "apply_patch"],
+    "required_tools": [
+      "read_file",
+      "run_tests",
+      "apply_patch"
+    ],
     "final_answer_required": true
   },
   "tools": [
@@ -16,8 +23,14 @@
         "description": "Read a repository file.",
         "parameters": {
           "type": "object",
-          "properties": { "path": { "type": "string" } },
-          "required": ["path"]
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ]
         }
       }
     },
@@ -28,8 +41,14 @@
         "description": "Run pytest on a path.",
         "parameters": {
           "type": "object",
-          "properties": { "path": { "type": "string" } },
-          "required": ["path"]
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ]
         }
       }
     },
@@ -41,10 +60,17 @@
         "parameters": {
           "type": "object",
           "properties": {
-            "path": { "type": "string" },
-            "diff": { "type": "string" }
+            "path": {
+              "type": "string"
+            },
+            "diff": {
+              "type": "string"
+            }
           },
-          "required": ["path", "diff"]
+          "required": [
+            "path",
+            "diff"
+          ]
         }
       }
     }
@@ -61,11 +87,14 @@
     {
       "role": "assistant",
       "content": "",
+      "expected_ok": true,
       "tool_calls": [
         {
           "id": "call_read_test",
           "name": "read_file",
-          "arguments": { "path": "tests/test_pricing.py" }
+          "arguments": {
+            "path": "tests/test_pricing.py"
+          }
         }
       ]
     },
@@ -78,11 +107,14 @@
     {
       "role": "assistant",
       "content": "",
+      "expected_ok": true,
       "tool_calls": [
         {
           "id": "call_read_impl",
           "name": "read_file",
-          "arguments": { "path": "src/pricing.py" }
+          "arguments": {
+            "path": "src/pricing.py"
+          }
         }
       ]
     },
@@ -95,11 +127,14 @@
     {
       "role": "assistant",
       "content": "Reproducing the failure before editing.",
+      "expected_ok": true,
       "tool_calls": [
         {
           "id": "call_test_before",
           "name": "run_tests",
-          "arguments": { "path": "tests/test_pricing.py" }
+          "arguments": {
+            "path": "tests/test_pricing.py"
+          }
         }
       ]
     },
@@ -113,6 +148,7 @@
     {
       "role": "assistant",
       "content": "",
+      "expected_ok": true,
       "tool_calls": [
         {
           "id": "call_patch",
@@ -133,11 +169,14 @@
     {
       "role": "assistant",
       "content": "",
+      "expected_ok": true,
       "tool_calls": [
         {
           "id": "call_test_after",
           "name": "run_tests",
-          "arguments": { "path": "tests/test_pricing.py" }
+          "arguments": {
+            "path": "tests/test_pricing.py"
+          }
         }
       ]
     },
@@ -149,7 +188,8 @@
     },
     {
       "role": "assistant",
-      "content": "Root cause: `estimate_cost` multiplied token count by a *per-million* USD rate, so 1000 tokens at $0.15/M produced 150 instead of 0.00015.\n\nFix: divide by 1e6 (`(tokens_in / 1_000_000.0) * rate`) in `src/pricing.py`. First pytest run failed (reproduced); after the patch, `tests/test_pricing.py` is green (1 passed)."
+      "content": "Root cause: `estimate_cost` multiplied token count by a *per-million* USD rate, so 1000 tokens at $0.15/M produced 150 instead of 0.00015.\n\nFix: divide by 1e6 (`(tokens_in / 1_000_000.0) * rate`) in `src/pricing.py`. First pytest run failed (reproduced); after the patch, `tests/test_pricing.py` is green (1 passed).",
+      "expected_ok": true
     }
   ]
 }

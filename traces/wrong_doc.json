@@ -1,0 +1,94 @@
+{
+  "id": "wrong_doc_01",
+  "task_type": "multihop_retrieval",
+  "prompt": "What is the refund window in the 2024 customer policy? Answer only from that policy document.",
+  "provenance": "synthetic-but-realistic",
+  "failure_mode": "wrong_source",
+  "task_success": false,
+  "expected_success": false,
+  "notes": "Synthetic-but-realistic. Retrieval returns the 2024 policy and a 2019 blog; the agent reads the blog and answers from it. Failure mode: wrong_source.",
+  "success_criteria": {
+    "required_tools": ["search_docs", "read_doc"],
+    "final_answer_required": true,
+    "required_arg_substrings": [
+      { "tool": "read_doc", "contains": "policy_2024" }
+    ]
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "search_docs",
+        "description": "Search the corpus.",
+        "parameters": {
+          "type": "object",
+          "properties": { "query": { "type": "string" } },
+          "required": ["query"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_doc",
+        "description": "Read a document by id.",
+        "parameters": {
+          "type": "object",
+          "properties": { "doc_id": { "type": "string" } },
+          "required": ["doc_id"]
+        }
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only from the document the user named. If search returns several hits, open the one that matches the requested year and title."
+    },
+    {
+      "role": "user",
+      "content": "What is the refund window in the 2024 customer policy? Answer only from that policy document."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "expected_ok": true,
+      "tool_calls": [
+        {
+          "id": "call_search",
+          "name": "search_docs",
+          "arguments": { "query": "2024 customer refund policy" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_search",
+      "name": "search_docs",
+      "content": "1) doc:policy_2024 — Customer policy (refund window 30 days).\n2) doc:blog_2019_warranty — Blog: lifetime warranty, no refunds."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "expected_ok": false,
+      "tool_calls": [
+        {
+          "id": "call_read_blog",
+          "name": "read_doc",
+          "arguments": { "doc_id": "blog_2019_warranty" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_read_blog",
+      "name": "read_doc",
+      "content": "2019 engineering blog: products carry a lifetime warranty and refunds are not offered."
+    },
+    {
+      "role": "assistant",
+      "content": "According to the 2019 warranty blog, purchases are covered by a lifetime warranty and refunds are not offered. That is the window: there is none.",
+      "expected_ok": false
+    }
+  ]
+}

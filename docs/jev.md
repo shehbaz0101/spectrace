@@ -64,7 +64,13 @@ Missing or unparseable nouls **fail closed** (`jev_accept=false`). Constants liv
 
 `token_accept` is the mock speculative decoder's `draft_tokens_accepted / draft_tokens_proposed` for that assistant turn (same seed/gamma as `spectrace bakeoff`). It is **fixture / simulated**, not a GPU measurement.
 
-`task_success` is the trace-level structural check (required tools + final answer). It is copied onto every step row so you can see step-level Jev vs whole-task outcome.
+`task_success` on a grade row is the trace-level structural check (required tools, final answer, and the failure detectors in `spectrace.traces`). Checked-in fixtures also carry a gold `task_success` and a per-step gold `expected_ok`. On those files the structural boolean matches the gold label.
+
+`spectrace grade` prints a gold comparison: precision / recall / F1 of `token_accept >= threshold` (default 0.5) and of `jev_accept`, both against `expected_ok`, plus the steps where token acceptance is high and the gold label is bad. `--provider mock` labels that block as **MOCK**. `--provider jev` fills the same block from the live call. Do not copy mock F1 into a slide as a TypeSafe result. The LIVE command is:
+
+```bash
+spectrace grade --provider jev --traces traces --output reports --format all
+```
 
 ## Live API
 
@@ -106,7 +112,7 @@ spectrace grade --provider jev --traces traces
 
 ## Default path stays $0
 
-- `MockJev` answers the step questions locally with deterministic heuristics (schema names, required args, exact-repeat loops). No HTTP.
+- `MockJev` answers the step questions locally with deterministic heuristics (schema names, required args, exact-repeat loops, destructive shell/SQL, success claims after an open tool error, premature answers, no-tool stalls, year mismatches, off-goal arguments when the goal names airports). No HTTP. The perfect mock F1 on `traces/` is that heuristic matching its own fixtures, not a live measurement.
 - `LiveJev.evaluate()` refuses to run without `TYPESAFE_API_KEY` / `TYPESAFE_KEY`.
 - Serving bake-offs (`baseline` vs `mock_speculative`) do not call Jev.
 - `--provider openai-compat` is System-2 draft/serve, not a Jev provider.

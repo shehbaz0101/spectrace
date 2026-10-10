@@ -109,6 +109,69 @@ def accept_rate(proposed: int, accepted: int) -> float | None:
     return accepted / proposed
 
 
+@dataclass(frozen=True)
+class Confusion:
+    """Binary scores. Positive class = the step should be accepted (gold ok)."""
+
+    tp: int
+    fp: int
+    tn: int
+    fn: int
+
+    @property
+    def precision(self) -> float | None:
+        denom = self.tp + self.fp
+        if denom == 0:
+            return None
+        return self.tp / denom
+
+    @property
+    def recall(self) -> float | None:
+        denom = self.tp + self.fn
+        if denom == 0:
+            return None
+        return self.tp / denom
+
+    @property
+    def f1(self) -> float | None:
+        p, r = self.precision, self.recall
+        if p is None or r is None or (p + r) == 0:
+            return None
+        return 2 * p * r / (p + r)
+
+    def to_dict(self) -> dict[str, Any]:
+        def _round(value: float | None) -> float | None:
+            if value is None:
+                return None
+            return round(value, 4)
+
+        return {
+            "tp": self.tp,
+            "fp": self.fp,
+            "tn": self.tn,
+            "fn": self.fn,
+            "precision": _round(self.precision),
+            "recall": _round(self.recall),
+            "f1": _round(self.f1),
+        }
+
+
+def confusion_from_labels(gold: Sequence[bool], pred: Sequence[bool]) -> Confusion:
+    if len(gold) != len(pred):
+        raise ValueError("gold and pred must have the same length")
+    tp = fp = tn = fn = 0
+    for g, p in zip(gold, pred):
+        if p and g:
+            tp += 1
+        elif p and not g:
+            fp += 1
+        elif (not p) and (not g):
+            tn += 1
+        else:
+            fn += 1
+    return Confusion(tp=tp, fp=fp, tn=tn, fn=fn)
+
+
 def aggregate(runs: Sequence[RunMetrics]) -> BakeoffSummary:
     successes = [r for r in runs if r.success]
     n_success = len(successes)

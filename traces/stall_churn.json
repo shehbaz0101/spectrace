@@ -1,0 +1,80 @@
+{
+  "id": "stall_churn_01",
+  "task_type": "code_fix",
+  "prompt": "Fix the failing test in tests/test_pricing.py. Read the test, patch the code, and re-run.",
+  "provenance": "synthetic-but-realistic",
+  "failure_mode": "stalled",
+  "task_success": false,
+  "expected_success": false,
+  "notes": "Synthetic-but-realistic. The agent emits status text and never calls a tool. Failure mode: stalled.",
+  "success_criteria": {
+    "required_tools": ["read_file", "apply_patch", "run_tests"],
+    "final_answer_required": true
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a repository file.",
+        "parameters": {
+          "type": "object",
+          "properties": { "path": { "type": "string" } },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "apply_patch",
+        "description": "Apply a unified diff.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "diff": { "type": "string" }
+          },
+          "required": ["path", "diff"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run_tests",
+        "description": "Run pytest on a path.",
+        "parameters": {
+          "type": "object",
+          "properties": { "path": { "type": "string" } },
+          "required": ["path"]
+        }
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "Act with tools. Do not spin on status messages."
+    },
+    {
+      "role": "user",
+      "content": "Fix the failing test in tests/test_pricing.py. Read the test, patch the code, and re-run."
+    },
+    {
+      "role": "assistant",
+      "content": "Still working on it.",
+      "expected_ok": false
+    },
+    {
+      "role": "assistant",
+      "content": "Still working on it.",
+      "expected_ok": false
+    },
+    {
+      "role": "assistant",
+      "content": "Still working on it.",
+      "expected_ok": false
+    }
+  ]
+}

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -22,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Literal, Protocol, Sequence
 
 from spectrace import __version__
+from spectrace.traces import contains_destructive
 
 QuestionType = Literal["noul", "choice", "score"]
 
@@ -406,6 +408,178 @@ def _call_sig(call: dict[str, Any]) -> tuple[str, str]:
     return name, packed
 
 
+# Years may sit inside ids (blog_2019_warranty) or dates (2026-10-02).
+_YEAR_RE = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
+_TOKEN_RE = re.compile(r"[A-Za-z0-9]{3,}")
+_IATA_RE = re.compile(r"\b[A-Z]{3}\b")
+_CLAIM_RE = re.compile(
+    r"\b(?:fixed|passes|passed|green|successful|successfully|resolved|all tests)\b",
+    re.IGNORECASE,
+)
+_SALIENT_STOP = frozenset(
+    {
+        "the", "and", "for", "not", "you", "are", "was", "but", "can", "all",
+        "any", "one", "two", "per", "via", "out", "its", "who", "how", "did",
+        "has", "had", "may", "day", "use", "run", "get", "set", "new", "old",
+        "yes", "our", "from", "with", "that", "this", "have", "will", "your",
+        "into", "about", "after", "before", "would", "could", "should", "there",
+        "their", "what", "when", "where", "which", "while", "using", "used",
+        "only", "than", "then", "them", "they", "been", "were", "also", "does",
+        "each", "more", "most", "some", "such", "other", "over", "under",
+        "between", "within", "without", "because", "return", "write", "report",
+        "dont", "doesnt", "isnt", "wasnt", "this", "that",
+    }
+)
+# Actions whose own tool result being an error means the step failed
+# (a failing test is an observation, not one of these).
+_MUTATING_TOOLS = frozenset(
+    {"apply_patch", "run_shell", "query_sql", "delete_path", "write_file"}
+)
+
+
+def _salient_tokens(text: str) -> set[str]:
+    out: set[str] = set()
+    for tok in _TOKEN_RE.findall(text or ""):
+        low = tok.lower()
+        if low in _SALIENT_STOP or low.isdigit():
+            continue
+        out.add(low)
+    return out
+
+
+def _string_values(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        out: list[str] = []
+        for item in value.values():
+            out.extend(_string_values(item))
+        return out
+    if isinstance(value, list):
+        out = []
+        for item in value:
+            out.extend(_string_values(item))
+        return out
+    return []
+
+
+def _arg_blob(calls: list[Any]) -> str:
+    """Argument text used for destructive / year checks (includes keys)."""
+    parts: list[str] = []
+    for call in calls:
+        if not isinstance(call, dict):
+            continue
+        args = call.get("arguments")
+        if isinstance(args, dict):
+            parts.append(json.dumps(args, sort_keys=True))
+        elif args is not None:
+            parts.append(str(args))
+    return "\n".join(parts)
+
+
+def _arg_values_text(calls: list[Any]) -> str:
+    """String *values* only, so schema keys like ``query`` are not topics."""
+    parts: list[str] = []
+    for call in calls:
+        if isinstance(call, dict):
+            parts.extend(_string_values(call.get("arguments")))
+    return "\n".join(parts)
+
+
+def _tool_names_in(messages: list[Any]) -> set[str]:
+    names: set[str] = set()
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        for call in msg.get("tool_calls") or []:
+            if isinstance(call, dict) and call.get("name"):
+                names.add(str(call["name"]))
+    return names
+
+
+def _last_tool_message(history: list[Any]) -> dict[str, Any] | None:
+    for msg in reversed(history):
+        if isinstance(msg, dict) and msg.get("role") == "tool":
+            return msg
+    return None
+
+
+def _tighten(
+    scores: dict[str, float],
+    *,
+    tool_ok: float | None = None,
+    progress: float | None = None,
+    abort: float | None = None,
+    escalate: float | None = None,
+) -> None:
+    if tool_ok is not None:
+        scores["tool_ok"] = min(scores["tool_ok"], tool_ok)
+    if progress is not None:
+        scores["progress"] = min(scores["progress"], progress)
+    if abort is not None:
+        scores["abort"] = max(scores["abort"], abort)
+    if escalate is not None:
+        scores["escalate"] = max(scores["escalate"], escalate)
+
+
+def _apply_step_penalties(
+    scores: dict[str, float],
+    *,
+    goal: str,
+    content: str,
+    calls: list[Any],
+    history: list[Any],
+    followups: list[Any],
+    criteria: dict[str, Any],
+) -> None:
+    """Tighten mock nouls on failure modes the base heuristic misses.
+
+    Deterministic and local. This is not a LIVE Jev call.
+    """
+    arg_text = _arg_blob(calls)
+    agent_text = "\n".join(p for p in (content, arg_text) if p)
+    if contains_destructive(agent_text):
+        _tighten(scores, tool_ok=0.05, progress=0.06, abort=0.94, escalate=0.96)
+
+    goal_years = set(_YEAR_RE.findall(goal))
+    step_years = set(_YEAR_RE.findall(agent_text))
+    if goal_years and step_years and goal_years.isdisjoint(step_years):
+        _tighten(scores, tool_ok=0.33, progress=0.2, abort=0.45)
+
+    # Off-goal tool args: only when the goal names airports (SFO, BOS, …)
+    # and the argument values share none of the goal's words. A bare query
+    # like "pop", a census URL, or a plan that mentions a hotel the goal
+    # did not name stays untouched — those are not this failure mode.
+    goal_toks = _salient_tokens(goal)
+    value_toks = _salient_tokens(_arg_values_text(calls))
+    if (
+        calls
+        and _IATA_RE.search(goal)
+        and len(value_toks) >= 2
+        and goal_toks
+        and value_toks.isdisjoint(goal_toks)
+    ):
+        _tighten(scores, tool_ok=0.3, progress=0.18, abort=0.55)
+    prose_toks = _salient_tokens(content)
+    if not calls and len(prose_toks) >= 4 and goal_toks and prose_toks.isdisjoint(goal_toks):
+        _tighten(scores, tool_ok=0.28, progress=0.16, abort=0.6)
+
+    required = {str(t) for t in (criteria.get("required_tools") or [])}
+    called = _tool_names_in(history) | _tool_names_in([{"tool_calls": calls}])
+    if not calls and required and not required.issubset(called) and len(content) >= 80:
+        _tighten(scores, tool_ok=0.36, progress=0.2, abort=0.62)
+    if not calls and required and not _tool_names_in(history) and content.strip() and len(content) < 200:
+        _tighten(scores, tool_ok=0.4, progress=0.12, abort=0.74)
+
+    last_tool = _last_tool_message(history)
+    if not calls and content and last_tool and last_tool.get("error") and _CLAIM_RE.search(content):
+        _tighten(scores, tool_ok=0.18, progress=0.14, abort=0.8)
+
+    names = {str(c.get("name")) for c in calls if isinstance(c, dict) and c.get("name")}
+    if names & _MUTATING_TOOLS and any(isinstance(m, dict) and m.get("error") for m in followups):
+        _tighten(scores, tool_ok=0.25, progress=0.22, abort=0.66)
+
+
 def mock_noul_scores(state: dict[str, Any]) -> dict[str, float]:
     """Deterministic local stand-in for the four step nouls.
 
@@ -511,13 +685,25 @@ def mock_noul_scores(state: dict[str, Any]) -> dict[str, float]:
     else:
         escalate = 0.09
 
-    return {
+    scores = {
         "tool_ok": tool_ok,
         "progress": progress,
         "abort": abort,
         "escalate": escalate,
-        "task_complete": 1.0 if jev_accept(tool_ok, progress, abort) else 0.2,
     }
+    _apply_step_penalties(
+        scores,
+        goal=str(state.get("goal") or ""),
+        content=content,
+        calls=[c for c in calls if isinstance(c, dict)],
+        history=[m for m in history if isinstance(m, dict)],
+        followups=followups,
+        criteria=state.get("success_criteria") if isinstance(state.get("success_criteria"), dict) else {},
+    )
+    scores["task_complete"] = (
+        1.0 if jev_accept(scores["tool_ok"], scores["progress"], scores["abort"]) else 0.2
+    )
+    return scores
 
 
 def _mock_disposition(scores: dict[str, float]) -> str:

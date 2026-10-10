@@ -26,7 +26,9 @@ from spectrace.jev import (
     resolve_grade_provider,
 )
 from spectrace.metrics import load_price_table
-from spectrace.providers import ProviderError, resolve_provider
+from spectrace.openai_compat import DEFAULT_TIMEOUT_S as LIVE_TIMEOUT_S
+from spectrace.openai_compat import OpenAICompatClient, OpenAICompatError
+from spectrace.providers import ProviderError, is_live_provider, resolve_provider
 from spectrace.replay import run_bakeoff
 from spectrace.report import ascii_table, render_json, render_markdown, write_reports
 from spectrace.traces import load_traces, traces_summary
@@ -114,7 +116,23 @@ def _add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--provider",
         default="mock-local",
-        help="mock-local (default) or openai-compat (requires SPECTRACE_BASE_URL).",
+        help=(
+            "mock-local (default, no network) or openai-compat "
+            "(System-2 draft/serve; requires SPECTRACE_BASE_URL). "
+            "Jev is not a serving provider — use `spectrace grade`."
+        ),
+    )
+    p.add_argument(
+        "--timeout",
+        type=float,
+        default=LIVE_TIMEOUT_S,
+        help="HTTP timeout seconds for --provider openai-compat (default 30).",
+    )
+    p.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="Max tokens per live draft step (default: clamp recorded length, 64–256).",
     )
     p.add_argument(
         "--price-table",
@@ -159,7 +177,13 @@ def _print_summary(summary, fmt: str) -> None:
     if fmt == "md":
         sys.stdout.write(render_markdown(summary))
         return
-    banner = "FIXTURE / SIMULATED — not GPU measurements. Default cost is $0."
+    live = any(r.provider == "openai-compat" for r in summary.runs)
+    banner = (
+        "LIVE OpenAI-compat draft/serve. Task success is the recorded fixture. "
+        "accept_rate is still mock. Jev is grade-only (`spectrace grade`)."
+        if live
+        else "FIXTURE / SIMULATED — not GPU measurements. Default cost is $0."
+    )
     if fmt == "all":
         print(banner)
         print(ascii_table(summary.runs))
@@ -243,16 +267,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ProviderError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    client = None
+    if is_live_provider(provider):
+        try:
+            client = OpenAICompatClient.from_spec(provider, timeout=args.timeout)
+        except OpenAICompatError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
     prices = _load_prices(args.price_table)
-    summary = run_bakeoff(
-        traces,
-        methods,
-        seed=args.seed,
-        gamma=args.gamma,
-        provider=provider,
-        price_table=prices,
-        model=args.model,
-    )
+    try:
+        summary = run_bakeoff(
+            traces,
+            methods,
+            seed=args.seed,
+            gamma=args.gamma,
+            provider=provider,
+            price_table=prices,
+            model=args.model,
+            client=client,
+            max_tokens=args.max_tokens,
+        )
+    except OpenAICompatError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     _print_summary(summary, args.format)
     if args.output:
         json_path, md_path = write_reports(summary, args.output, stem="report")

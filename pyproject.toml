@@ -41,5 +41,5 @@ testpaths = ["tests"]
 addopts = "-q"
 pythonpath = ["."]
 markers = [
-  "integration: live TypeSafe API (skipped unless TYPESAFE_API_KEY or TYPESAFE_KEY is set)",
+  "integration: live HTTP (skipped unless TYPESAFE_API_KEY / TYPESAFE_KEY or SPECTRACE_BASE_URL is set)",
 ]

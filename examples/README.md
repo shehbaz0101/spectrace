@@ -15,6 +15,9 @@ spectrace grade --provider mock --traces traces
 
 # Single method:
 spectrace run --trace traces/code_fix.json --method mock_speculative --dry-run
+
+# Optional live draft/serve (needs SPECTRACE_BASE_URL; Jev is still grade-only):
+# spectrace run --trace traces/code_fix.json --method baseline --provider openai-compat
 ```
 
 Numbers are **fixture / simulated**. Plug in `examples/prices.example.json` only when you want a non-zero cost column:

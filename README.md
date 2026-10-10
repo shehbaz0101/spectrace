@@ -6,7 +6,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 [![$0 default](https://img.shields.io/badge/default_cost-%240-green.svg)](#quickstart)
 
-Student-friendly. **No API keys, GPUs, or paid providers required** to run the demo or `pytest`. Optional OpenAI-compatible `SPECTRACE_BASE_URL` is documented for later; secrets are never committed.
+Student-friendly. **No API keys, GPUs, or paid providers required** to run the demo or `pytest`. An optional OpenAI-compatible draft/serve path is behind `--provider openai-compat` and `SPECTRACE_BASE_URL`; secrets are never committed.
 
 | You have | spectrace gives you |
 | --- | --- |
@@ -66,15 +66,7 @@ Write JSON + Markdown reports:
 spectrace bakeoff --traces traces --output reports --format all
 ```
 
-Optional later (not used by tests):
-
-```bash
-export SPECTRACE_BASE_URL=http://127.0.0.1:11434/v1   # any OpenAI-compatible server
-export SPECTRACE_MODEL=local-model
-# export SPECTRACE_API_KEY=...   # if the server requires one; never commit it
-```
-
-Copy `.env.example` rather than inventing filenames for secrets.
+Default bake-off and `pytest` never open a socket. Optional live draft/serve: [Optional: live OpenAI-compatible draft](#optional-live-openai-compatible-draft). Copy `.env.example` rather than inventing filenames for secrets.
 
 ---
 
@@ -113,7 +105,7 @@ Cost per successful task is **$0.0000** on the default price table. Pass `--pric
 
 | Metric | Meaning |
 | --- | --- |
-| `wall_latency_ms` | Simulated decode time (target ms/token vs draft+verify rounds). No `sleep`. |
+| `wall_latency_ms` | Simulated decode time (target ms/token vs draft+verify rounds). No `sleep`. With `--provider openai-compat`, this is live HTTP time; fixture latency stays in `extra`. |
 | `accept_rate` | `draft_tokens_accepted / draft_tokens_proposed` (`—` on baseline). |
 | `tokens_in` | **Sum of prefix tokens at every assistant turn** (the agent prefill tax). |
 | `tokens_out` | Approximate tokens in recorded assistant text + tool-call JSON. |
@@ -144,7 +136,8 @@ CLI:
 ```
 spectrace run --trace <file-or-dir> --method baseline|mock_speculative
 spectrace bakeoff --traces traces --methods baseline,mock_speculative
-spectrace grade --traces traces --provider mock|jev
+spectrace run --trace <file> --method baseline --provider openai-compat   # live draft/serve
+spectrace grade --traces traces --provider mock|jev                      # Jev accepts only
 spectrace list-traces --traces traces
 ```
 
@@ -156,7 +149,7 @@ spectrace list-traces --traces traces
 
 **mock_speculative** — Leviathan-style window of `gamma` draft tokens, longest accepted prefix, plus one guaranteed target token per round. Acceptance is sampled from a per-position schedule that is harsher on `tool_call` JSON than on prose. Wall time is `rounds × (γ·draft_ms + verify_ms)`.
 
-Neither method calls a live model on the default path. They *serve the recorded tokens* so the pipeline is demonstrable on a laptop.
+Neither method calls a live model on the default path. They *serve the recorded tokens* so the pipeline is demonstrable on a laptop. `--provider openai-compat` is the optional live System-2 draft/serve overlay; it does not replace these methods.
 
 ---
 
@@ -171,6 +164,44 @@ Neither method calls a live model on the default path. They *serve the recorded 
 | `data_analysis_01` | tools + brief | schema inspect → pandas snippet → artifact → PM paragraph |
 
 All are synthetic. Snippets are plausible, not live API pulls.
+
+---
+
+## Optional: live OpenAI-compatible draft
+
+`--provider openai-compat` is the **System-2 draft/serve** side. It POSTs `chat/completions` to whatever OpenAI-compatible server you point at (`vLLM`, `SGLang`, Ollama `/v1`, a local proxy). TypeSafe Jev is **not** this path and still does not generate agent text.
+
+| Switch | Brain | Job |
+| --- | --- | --- |
+| `--provider openai-compat` | System 2 (draft/serve) | Time a live next-turn completion on each recorded prefix |
+| `--method baseline` / `mock_speculative` | System 2 (simulated) | Replay fixture tokens + mock accept rate |
+| `spectrace grade --provider mock\|jev` | System 1 (accept) | `jev_accept` on the recorded step |
+
+Default is unchanged: no network, mock decode, **$0**. Live is used only when **both** are true:
+
+1. You pass `--provider openai-compat` (aliases: `openai`, `live`) on `spectrace run` or `spectrace bakeoff`.
+2. `SPECTRACE_BASE_URL` is set.
+
+`--provider openai-compat` without `SPECTRACE_BASE_URL` exits 2 with a clear error. Setting the env var alone does nothing — `spectrace bakeoff --traces traces` and `pytest` stay offline.
+
+```bash
+export SPECTRACE_BASE_URL=http://127.0.0.1:11434/v1   # any OpenAI-compatible server
+export SPECTRACE_MODEL=local-model
+# export SPECTRACE_API_KEY=...   # only if the server requires one; never commit it
+
+spectrace run --trace traces/code_fix.json --method baseline --provider openai-compat
+spectrace bakeoff --traces traces --methods baseline --provider openai-compat
+```
+
+What the live path actually does (smallest honest integration, not a new agent product):
+
+- Walk the **recorded** assistant turns.
+- For each turn, POST the prefix (`messages` before that turn, plus tool schemas) to `{SPECTRACE_BASE_URL}/chat/completions`.
+- Overlay **wall latency** with HTTP time. If the server returns `usage.prompt_tokens` / `completion_tokens`, use those; otherwise keep the fixture tokenizer counts.
+- Task `success` is still structural on the fixture trajectory. `accept_rate` is still the local mock decoder (`--method`). Jev is not called.
+- Bake-off with two methods shares one live pass per trace so the server is not hit twice.
+
+`--timeout` (default 30s) and `--max-tokens` (default: clamp recorded length into 64–256) apply only to this provider. Copy `.env.example`. Do not put a key in the repo. CI unsets `SPECTRACE_BASE_URL` / `SPECTRACE_API_KEY`.
 
 ---
 
@@ -220,10 +251,9 @@ python scripts/plot_dual_brain.py
 
 This is an early public scaffold. Useful follow-ups, in roughly this order:
 
-1. Real OpenAI-compatible replay (`SPECTRACE_BASE_URL`) behind a flag, still defaulting to mock.
-2. Import adapters for public agent logs (e.g. SWE-bench traces) with the same schema.
-3. Plug-in to a local engine’s spec-decode accept stats instead of the mock sampler.
-4. Price tables checked in as **examples only** — never keys.
+1. Import adapters for public agent logs (e.g. SWE-bench traces) with the same schema.
+2. Plug-in to a local engine’s spec-decode accept stats instead of the mock sampler.
+3. Price tables checked in as **examples only** — never keys.
 
 Please:
 

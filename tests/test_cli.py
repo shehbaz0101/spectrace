@@ -93,4 +93,7 @@ def test_cli_live_provider_error_message(traces_dir, capsys):
         resolve_provider("openai-compat")
         raise AssertionError("should have failed")
     except ProviderError as exc:
-        assert "mock-local" in str(exc)
+        msg = str(exc)
+        assert "mock-local" in msg
+        assert "SPECTRACE_BASE_URL" in msg
+        assert "grade" in msg.lower() or "accept" in msg.lower()

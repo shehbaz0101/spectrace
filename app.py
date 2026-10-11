@@ -7,6 +7,7 @@ cold start does not call the Hub or Gradio analytics.
 from __future__ import annotations
 
 import os
+import re
 
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
@@ -14,6 +15,7 @@ os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 import gradio as gr
+from gradio import routes
 
 from spectrace.space_view import (
     build_snapshot,
@@ -211,6 +213,27 @@ def _show(trace_id: str | None) -> str:
     return render_trace(_SNAPSHOT, trace_id or _DEFAULT_TRACE)
 
 
+def _strip_external_shell() -> None:
+    """Gradio's HTML shell preconnects to Google Fonts and loads iframe-resizer
+    from cdnjs. Drop those tags so a page view stays on this host.
+    """
+    loader = routes.templates.env.loader
+    original = loader.get_source
+    external = re.compile(
+        r"<link\b[^>]*(?:fonts\.googleapis\.com|fonts\.gstatic\.com)[^>]*/>"
+        r"|<script\b[^>]*cdnjs\.cloudflare\.com[\s\S]*?</script>",
+        re.IGNORECASE,
+    )
+
+    def get_source(environment, template):  # type: ignore[no-untyped-def]
+        source, filename, uptodate = original(environment, template)
+        if template.endswith(("index.html", "share.html")):
+            source = external.sub("", source)
+        return source, filename, uptodate
+
+    loader.get_source = get_source  # type: ignore[method-assign]
+
+
 def build_demo() -> gr.Blocks:
     theme = gr.themes.Base(
         primary_hue="stone",
@@ -239,6 +262,7 @@ def build_demo() -> gr.Blocks:
     return demo
 
 
+_strip_external_shell()
 demo = build_demo()
 
 

@@ -1,4 +1,6 @@
-# spectrace
+# spectrace — live demo https://spectrace-f6lk.onrender.com
+On 15 synthetic traces, a step-level verifier rejected 11/11 harmful steps that token acceptance >= 0.5 would keep.
+Tool-call drafts accept 0.327 versus 0.694 for chat prose.
 
 Agent traces are not chat. spectrace replays multi-step tool trajectories and scores two different questions: did the draft tokens land (`token_accept`), and should this step have been kept (`jev_accept`)?
 
@@ -7,6 +9,55 @@ System 2 drafts. System 1 ([TypeSafe Jev](https://typesafe.ai/blog/introducing-s
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 [![$0 default](https://img.shields.io/badge/default_cost-%240-green.svg)](#30-second-quickstart)
+
+---
+
+## Live demo
+
+**[spectrace live demo](https://spectrace-f6lk.onrender.com)** runs the same offline mock path in the browser. No API key, no network calls. The free tier is 512 MB RAM and spins down after about 15 minutes idle; the first request after that takes longer while the process wakes. The page shows the same 15 synthetic traces as the headline above.
+
+Local equivalent (binds `0.0.0.0` and `$PORT`, default port `7860`):
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+Gradio prints a local URL, default `http://127.0.0.1:7860`. `GET /healthz` returns `{"status":"ok"}`.
+
+### Render settings
+
+[`render.yaml`](render.yaml) is the Blueprint. In the Render dashboard: **New → Blueprint**, point it at `https://github.com/shehbaz0101/spectrace`, and use the branch below. Do not add secrets. Do not set `PORT`; Render injects it.
+
+| Setting | Value |
+| --- | --- |
+| Service name | `spectrace` |
+| Type | Web service |
+| Runtime | Python |
+| Plan | Free (`free`: 0.1 CPU, 512 MB, spins down when idle) |
+| Region | Oregon |
+| Branch | `main` |
+| Python | `3.12.15` (`PYTHON_VERSION`, also `.python-version`) |
+| Build command | `pip install -r requirements.txt` |
+| Start command | `python app.py` |
+| Health check path | `/healthz` |
+| Auto-deploy | On commit |
+
+Environment variables (also in the Blueprint):
+
+| Key | Value |
+| --- | --- |
+| `PYTHON_VERSION` | `3.12.15` |
+| `GRADIO_ANALYTICS_ENABLED` | `False` |
+| `HF_HUB_OFFLINE` | `1` |
+| `HF_HUB_DISABLE_TELEMETRY` | `1` |
+| `TRANSFORMERS_OFFLINE` | `1` |
+
+Leave unset: `PORT` (Render sets it), `TYPESAFE_API_KEY`, `TYPESAFE_KEY`, `SPECTRACE_BASE_URL`, `SPECTRACE_API_KEY`.
+
+The service needs this whole repo (`app.py`, `requirements.txt`, `spectrace/`, `traces/`, and `docs/`). The page reads the bundled traces and the committed LIVE grade file from disk. It does not call TypeSafe or an OpenAI-compatible server.
+
+[`render.yaml`](render.yaml) tracks `main`. Repoint the Render service at `main` after this pull request merges.
 
 ---
 
@@ -232,7 +283,10 @@ Copy [`.env.example`](.env.example). Do not put a key in the repo.
 ## Layout
 
 ```
-spectrace/     CLI, replay, mock decoder, Jev grader, demo HTML
+app.py         Render web service (Gradio). Offline mock path, $0
+render.yaml    Render Blueprint (free plan, Python 3.12, /healthz)
+requirements.txt  Web dependency pin (gradio). Not required for the CLI
+spectrace/     CLI, replay, mock decoder, Jev grader, demo HTML, Space view
 traces/        15 synthetic traces (5 happy, 10 failures)
 tests/         pytest, no keys
 docs/          Jev notes, both LIVE grade files, dual-brain figure

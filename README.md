@@ -1,4 +1,6 @@
-# spectrace
+# spectrace — live demo https://spectrace-f6lk.onrender.com
+On 15 synthetic traces, a step-level verifier rejected 11/11 harmful steps that token acceptance >= 0.5 would keep.
+Tool-call drafts accept 0.327 versus 0.694 for chat prose.
 
 Agent traces are not chat. spectrace replays multi-step tool trajectories and scores two different questions: did the draft tokens land (`token_accept`), and should this step have been kept (`jev_accept`)?
 
@@ -12,9 +14,7 @@ System 2 drafts. System 1 ([TypeSafe Jev](https://typesafe.ai/blog/introducing-s
 
 ## Live demo
 
-A public Render web service runs the same offline mock path in the browser. No API key, no network calls. The free tier is 512 MB RAM and spins down after about 15 minutes idle; the first request after that takes longer while the process wakes.
-
-**[spectrace live demo](https://PLACEHOLDER.onrender.com)** — replace `PLACEHOLDER` with the Render service hostname once the service exists.
+**[spectrace live demo](https://spectrace-f6lk.onrender.com)** runs the same offline mock path in the browser. No API key, no network calls. The free tier is 512 MB RAM and spins down after about 15 minutes idle; the first request after that takes longer while the process wakes. The page shows the same 15 synthetic traces as the headline above.
 
 Local equivalent (binds `0.0.0.0` and `$PORT`, default port `7860`):
 
@@ -36,7 +36,7 @@ Gradio prints a local URL, default `http://127.0.0.1:7860`. `GET /healthz` retur
 | Runtime | Python |
 | Plan | Free (`free`: 0.1 CPU, 512 MB, spins down when idle) |
 | Region | Oregon |
-| Branch | `cursor/hf-space-demo-0398` |
+| Branch | `main` |
 | Python | `3.12.15` (`PYTHON_VERSION`, also `.python-version`) |
 | Build command | `pip install -r requirements.txt` |
 | Start command | `python app.py` |
@@ -57,7 +57,7 @@ Leave unset: `PORT` (Render sets it), `TYPESAFE_API_KEY`, `TYPESAFE_KEY`, `SPECT
 
 The service needs this whole repo (`app.py`, `requirements.txt`, `spectrace/`, `traces/`, and `docs/`). The page reads the bundled traces and the committed LIVE grade file from disk. It does not call TypeSafe or an OpenAI-compatible server.
 
-After the service is up, replace `PLACEHOLDER` in the link above. When this branch is merged and deleted, change `branch` in `render.yaml` to `main`.
+[`render.yaml`](render.yaml) tracks `main`. Repoint the Render service at `main` after this pull request merges.
 
 ---
 

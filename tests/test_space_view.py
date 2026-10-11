@@ -119,13 +119,22 @@ def test_default_traces_dir_ignores_cwd(tmp_path, monkeypatch):
 
 def test_readme_and_render_files(repo_root: Path):
     readme = (repo_root / "README.md").read_text(encoding="utf-8")
+    head = "\n".join(readme.splitlines()[:3])
+    assert "https://spectrace-f6lk.onrender.com" in head
+    assert "15 synthetic traces" in head
+    assert "11/11" in head
+    assert "token acceptance >= 0.5" in head
+    assert "0.327" in head
+    assert "0.694" in head
+    assert "token_accept" not in head
     assert not readme.startswith("---\n")
     assert "## Live demo\n" in readme
-    assert "https://PLACEHOLDER.onrender.com" in readme
+    assert "https://spectrace-f6lk.onrender.com" in readme
+    assert "PLACEHOLDER" not in readme
     assert "huggingface.co/spaces" not in readme
     assert "pip install -r requirements.txt" in readme
     assert "python app.py" in readme
-    assert "cursor/hf-space-demo-0398" in readme
+    assert "| Branch | `main` |" in readme
     assert "/healthz" in readme
     blueprint = (repo_root / "render.yaml").read_text(encoding="utf-8")
     assert "plan: free" in blueprint
@@ -133,7 +142,12 @@ def test_readme_and_render_files(repo_root: Path):
     assert "buildCommand: pip install -r requirements.txt" in blueprint
     assert "startCommand: python app.py" in blueprint
     assert "healthCheckPath: /healthz" in blueprint
-    assert "branch: cursor/hf-space-demo-0398" in blueprint
+    assert "branch: main" in blueprint
+    changelog = (repo_root / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "0.1.0" in changelog
+    assert "October 2026" in changelog
+    pyproject = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'version = "0.1.0"' in pyproject
     assert "key: PORT" not in blueprint
     assert (repo_root / ".python-version").read_text(encoding="utf-8").strip() == "3.12.15"
     requirements = (repo_root / "requirements.txt").read_text(encoding="utf-8")

@@ -127,7 +127,13 @@ footer { display: none !important; }
 .sp-lat .sp-stat { color: #1d4ed8; }
 .sp-acc .sp-stat { color: #b45309; }
 .sp-pre .sp-stat { color: #0f766e; }
-.sp-cost .sp-stat { color: #1c1917; }
+.sp-cost .sp-stat {
+  color: #1c1917;
+  font-family: ui-sans-serif, "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.25;
+  font-weight: 750;
+}
 .sp-jev .sp-stat { color: #c2410c; }
 .sp-label { margin: 6px 0 0; font-weight: 700; font-size: 13.5px; }
 .sp-sub { margin: 3px 0 0; color: #57534e; font-size: 12.5px; }

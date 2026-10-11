@@ -414,12 +414,12 @@ def render_overview(snapshot: DemoSnapshot) -> str:
             ),
             _card(
                 "cost",
-                "Cost / success",
-                _fmt_cost(snapshot.cost_per_successful_task_usd),
-                "per successful task",
-                f"{snapshot.n_success_runs} successful runs of {snapshot.n_runs} "
-                f"({snapshot.n_task_success_traces} traces × 2 methods). "
-                "Default price table is all zeros. Failed runs are excluded.",
+                "API spend",
+                "offline mock: no API spend",
+                "this page does not call a model",
+                "The bake-off price table is zeros, so that column is not a bill. "
+                "docs/live-jev-grade-15traces-20261010.json (LIVE Jev, 2026-10-10) "
+                "records step grades and does not include a dollar spend.",
             ),
             _card(
                 "jev",
@@ -654,12 +654,6 @@ def _fmt_x(value: float) -> str:
 
 def _fmt_int(value: int) -> str:
     return f"{value:,}"
-
-
-def _fmt_cost(value: float) -> str:
-    if value != value:
-        return "n/a"
-    return f"${value:.4f}"
 
 
 def _mean(total: float, n: int) -> float:

@@ -55,7 +55,8 @@ def test_snapshot_is_offline_even_if_live_keys_are_set(traces_dir, monkeypatch):
     assert snap.token_f1 == pytest.approx(0.2979, abs=1e-4)
     assert 'data-grade-source="mock"' in page
     assert "SIMULATED" in page
-    assert "$0.0000" in page
+    assert "offline mock: no API spend" in page
+    assert "$0.0000" not in page
     assert "11/11" in page
     assert REPO_URL in page
     assert "Agent traces are not chat" in page

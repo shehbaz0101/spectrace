@@ -1,3 +1,18 @@
+---
+title: Spectrace
+emoji: "⚡"
+colorFrom: yellow
+colorTo: green
+sdk: gradio
+sdk_version: 5.50.0
+app_file: app.py
+pinned: false
+license: mit
+python_version: "3.12"
+suggested_hardware: cpu-basic
+short_description: Offline demo — agent traces are not chat
+---
+
 # spectrace
 
 Agent traces are not chat. spectrace replays multi-step tool trajectories and scores two different questions: did the draft tokens land (`token_accept`), and should this step have been kept (`jev_accept`)?
@@ -7,6 +22,45 @@ System 2 drafts. System 1 ([TypeSafe Jev](https://typesafe.ai/blog/introducing-s
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 [![$0 default](https://img.shields.io/badge/default_cost-%240-green.svg)](#30-second-quickstart)
+
+---
+
+## Live demo
+
+A public Hugging Face Space runs the same offline mock path in the browser. No API key, no network calls, free CPU.
+
+**[spectrace live demo](https://huggingface.co/spaces/PLACEHOLDER/spectrace)** — replace `PLACEHOLDER` with the Hugging Face username once the Space exists.
+
+Local equivalent:
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+Gradio prints a local URL, default `http://127.0.0.1:7860`.
+
+### Space settings
+
+Create a **public** Space. Do not add secrets.
+
+| Setting | Value |
+| --- | --- |
+| Space name | `spectrace` |
+| License | MIT |
+| SDK | Gradio |
+| Gradio version | `5.50.0` (`sdk_version` in the YAML block above) |
+| Hardware | CPU basic (free) |
+| Visibility | Public |
+| Python | 3.12 |
+| App file | `app.py` |
+| Secrets | none. Do not set `TYPESAFE_API_KEY`, `TYPESAFE_KEY`, `SPECTRACE_BASE_URL`, or `SPECTRACE_API_KEY` |
+
+The YAML block at the top of this file is the Space config (`sdk`, `sdk_version`, `app_file`, `suggested_hardware: cpu-basic`).
+
+Deploy from this repository: create the Space, then in Space settings enable GitHub sync from `https://github.com/shehbaz0101/spectrace` on branch `main`. A manual upload needs the whole repo (`app.py`, `requirements.txt`, this README, `spectrace/`, `traces/`, and `docs/`). The page reads the bundled traces and the committed LIVE grade file from disk. It does not call TypeSafe or an OpenAI-compatible server.
+
+After the Space is up, replace `PLACEHOLDER` in the link above.
 
 ---
 
@@ -232,7 +286,9 @@ Copy [`.env.example`](.env.example). Do not put a key in the repo.
 ## Layout
 
 ```
-spectrace/     CLI, replay, mock decoder, Jev grader, demo HTML
+app.py         Hugging Face Space (Gradio). Offline mock path, $0
+requirements.txt  Space dependency pin (gradio). Not required for the CLI
+spectrace/     CLI, replay, mock decoder, Jev grader, demo HTML, Space view
 traces/        15 synthetic traces (5 happy, 10 failures)
 tests/         pytest, no keys
 docs/          Jev notes, both LIVE grade files, dual-brain figure

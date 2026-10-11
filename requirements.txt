@@ -1,0 +1,3 @@
+# Hugging Face Space, free CPU tier. spectrace itself has no third-party dependencies.
+# Pin matches the sdk_version in README.md front matter.
+gradio==5.50.0

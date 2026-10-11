@@ -37,6 +37,9 @@ spectrace-out/
 credentials.json
 secrets.json
 
+# Gradio local cache (Space UI)
+.gradio/
+
 # Editors / OS
 .DS_Store
 .idea/

@@ -1,18 +1,3 @@
----
-title: Spectrace
-emoji: "⚡"
-colorFrom: yellow
-colorTo: green
-sdk: gradio
-sdk_version: 5.50.0
-app_file: app.py
-pinned: false
-license: mit
-python_version: "3.12"
-suggested_hardware: cpu-basic
-short_description: Offline demo — agent traces are not chat
----
-
 # spectrace
 
 Agent traces are not chat. spectrace replays multi-step tool trajectories and scores two different questions: did the draft tokens land (`token_accept`), and should this step have been kept (`jev_accept`)?
@@ -27,40 +12,52 @@ System 2 drafts. System 1 ([TypeSafe Jev](https://typesafe.ai/blog/introducing-s
 
 ## Live demo
 
-A public Hugging Face Space runs the same offline mock path in the browser. No API key, no network calls, free CPU.
+A public Render web service runs the same offline mock path in the browser. No API key, no network calls. The free tier is 512 MB RAM and spins down after about 15 minutes idle; the first request after that takes longer while the process wakes.
 
-**[spectrace live demo](https://huggingface.co/spaces/PLACEHOLDER/spectrace)** — replace `PLACEHOLDER` with the Hugging Face username once the Space exists.
+**[spectrace live demo](https://PLACEHOLDER.onrender.com)** — replace `PLACEHOLDER` with the Render service hostname once the service exists.
 
-Local equivalent:
+Local equivalent (binds `0.0.0.0` and `$PORT`, default port `7860`):
 
 ```bash
 pip install -r requirements.txt
 python app.py
 ```
 
-Gradio prints a local URL, default `http://127.0.0.1:7860`.
+Gradio prints a local URL, default `http://127.0.0.1:7860`. `GET /healthz` returns `{"status":"ok"}`.
 
-### Space settings
+### Render settings
 
-Create a **public** Space. Do not add secrets.
+[`render.yaml`](render.yaml) is the Blueprint. In the Render dashboard: **New → Blueprint**, point it at `https://github.com/shehbaz0101/spectrace`, and use the branch below. Do not add secrets. Do not set `PORT`; Render injects it.
 
 | Setting | Value |
 | --- | --- |
-| Space name | `spectrace` |
-| License | MIT |
-| SDK | Gradio |
-| Gradio version | `5.50.0` (`sdk_version` in the YAML block above) |
-| Hardware | CPU basic (free) |
-| Visibility | Public |
-| Python | 3.12 |
-| App file | `app.py` |
-| Secrets | none. Do not set `TYPESAFE_API_KEY`, `TYPESAFE_KEY`, `SPECTRACE_BASE_URL`, or `SPECTRACE_API_KEY` |
+| Service name | `spectrace` |
+| Type | Web service |
+| Runtime | Python |
+| Plan | Free (`free`: 0.1 CPU, 512 MB, spins down when idle) |
+| Region | Oregon |
+| Branch | `cursor/hf-space-demo-0398` |
+| Python | `3.12.15` (`PYTHON_VERSION`, also `.python-version`) |
+| Build command | `pip install -r requirements.txt` |
+| Start command | `python app.py` |
+| Health check path | `/healthz` |
+| Auto-deploy | On commit |
 
-The YAML block at the top of this file is the Space config (`sdk`, `sdk_version`, `app_file`, `suggested_hardware: cpu-basic`).
+Environment variables (also in the Blueprint):
 
-Deploy from this repository: create the Space, then in Space settings enable GitHub sync from `https://github.com/shehbaz0101/spectrace` on branch `main`. A manual upload needs the whole repo (`app.py`, `requirements.txt`, this README, `spectrace/`, `traces/`, and `docs/`). The page reads the bundled traces and the committed LIVE grade file from disk. It does not call TypeSafe or an OpenAI-compatible server.
+| Key | Value |
+| --- | --- |
+| `PYTHON_VERSION` | `3.12.15` |
+| `GRADIO_ANALYTICS_ENABLED` | `False` |
+| `HF_HUB_OFFLINE` | `1` |
+| `HF_HUB_DISABLE_TELEMETRY` | `1` |
+| `TRANSFORMERS_OFFLINE` | `1` |
 
-After the Space is up, replace `PLACEHOLDER` in the link above.
+Leave unset: `PORT` (Render sets it), `TYPESAFE_API_KEY`, `TYPESAFE_KEY`, `SPECTRACE_BASE_URL`, `SPECTRACE_API_KEY`.
+
+The service needs this whole repo (`app.py`, `requirements.txt`, `spectrace/`, `traces/`, and `docs/`). The page reads the bundled traces and the committed LIVE grade file from disk. It does not call TypeSafe or an OpenAI-compatible server.
+
+After the service is up, replace `PLACEHOLDER` in the link above. When this branch is merged and deleted, change `branch` in `render.yaml` to `main`.
 
 ---
 
@@ -286,8 +283,9 @@ Copy [`.env.example`](.env.example). Do not put a key in the repo.
 ## Layout
 
 ```
-app.py         Hugging Face Space (Gradio). Offline mock path, $0
-requirements.txt  Space dependency pin (gradio). Not required for the CLI
+app.py         Render web service (Gradio). Offline mock path, $0
+render.yaml    Render Blueprint (free plan, Python 3.12, /healthz)
+requirements.txt  Web dependency pin (gradio). Not required for the CLI
 spectrace/     CLI, replay, mock decoder, Jev grader, demo HTML, Space view
 traces/        15 synthetic traces (5 happy, 10 failures)
 tests/         pytest, no keys

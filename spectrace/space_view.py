@@ -1,4 +1,4 @@
-"""View model for the Hugging Face Space.
+"""View model for the public web demo.
 
 Uses the offline bake-off and MockJev only. No API key, no network.
 The chat numbers are a counterfactual on the same mock decoder: prose

@@ -1,4 +1,4 @@
-"""Hugging Face Space view model: offline mock path, no network."""
+"""Web demo view model: offline mock path, no network."""
 
 from __future__ import annotations
 
@@ -117,20 +117,33 @@ def test_default_traces_dir_ignores_cwd(tmp_path, monkeypatch):
     assert snap.n_steps == 49
 
 
-def test_readme_and_space_files(repo_root: Path):
+def test_readme_and_render_files(repo_root: Path):
     readme = (repo_root / "README.md").read_text(encoding="utf-8")
-    assert readme.startswith("---\n")
-    assert "sdk: gradio\n" in readme
-    assert "sdk_version: 5.50.0\n" in readme
-    assert "app_file: app.py\n" in readme
-    assert "suggested_hardware: cpu-basic\n" in readme
+    assert not readme.startswith("---\n")
     assert "## Live demo\n" in readme
-    assert "https://huggingface.co/spaces/PLACEHOLDER/spectrace" in readme
+    assert "https://PLACEHOLDER.onrender.com" in readme
+    assert "huggingface.co/spaces" not in readme
+    assert "pip install -r requirements.txt" in readme
+    assert "python app.py" in readme
+    assert "cursor/hf-space-demo-0398" in readme
+    assert "/healthz" in readme
+    blueprint = (repo_root / "render.yaml").read_text(encoding="utf-8")
+    assert "plan: free" in blueprint
+    assert 'value: "3.12.15"' in blueprint
+    assert "buildCommand: pip install -r requirements.txt" in blueprint
+    assert "startCommand: python app.py" in blueprint
+    assert "healthCheckPath: /healthz" in blueprint
+    assert "branch: cursor/hf-space-demo-0398" in blueprint
+    assert "key: PORT" not in blueprint
+    assert (repo_root / ".python-version").read_text(encoding="utf-8").strip() == "3.12.15"
     requirements = (repo_root / "requirements.txt").read_text(encoding="utf-8")
     assert "gradio==5.50.0" in requirements
     app = (repo_root / "app.py").read_text(encoding="utf-8")
     ast.parse(app)
     assert 'os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")' in app
     assert 'os.environ.setdefault("HF_HUB_OFFLINE", "1")' in app
+    assert 'server_name="0.0.0.0"' in app
+    assert '"/healthz"' in app
+    assert "PORT" in app
     assert "openai" not in app.lower()
     assert "typesafe" not in app.lower()

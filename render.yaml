@@ -1,0 +1,25 @@
+# Render Blueprint for the offline mock demo.
+# Free web service: 0.1 CPU, 512 MB RAM, spins down when idle.
+# Do not set PORT here. Render injects it and app.py reads it.
+services:
+  - type: web
+    name: spectrace
+    runtime: python
+    plan: free
+    region: oregon
+    branch: cursor/hf-space-demo-0398
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.15"
+      - key: GRADIO_ANALYTICS_ENABLED
+        value: "False"
+      - key: HF_HUB_OFFLINE
+        value: "1"
+      - key: HF_HUB_DISABLE_TELEMETRY
+        value: "1"
+      - key: TRANSFORMERS_OFFLINE
+        value: "1"

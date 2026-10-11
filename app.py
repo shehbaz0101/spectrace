@@ -1,4 +1,4 @@
-"""Hugging Face Space entrypoint.
+"""Render web service entrypoint.
 
 Offline mock path only. Telemetry is disabled before Gradio imports so a
 cold start does not call the Hub or Gradio analytics.
@@ -272,8 +272,49 @@ _strip_external_shell()
 demo = build_demo()
 
 
+_LOCAL_PORT = 7860
+
+
+def _listen_port() -> int:
+    raw = os.environ.get("PORT", str(_LOCAL_PORT))
+    try:
+        port = int(raw)
+    except ValueError:
+        return _LOCAL_PORT
+    if port < 1 or port > 65535:
+        return _LOCAL_PORT
+    return port
+
+
+def _install_healthcheck() -> None:
+    """Expose GET /healthz on the Gradio FastAPI app. Render hits this path."""
+    current = routes.App.create_app
+    if getattr(current, "_spectrace_health", False):
+        return
+    original = current
+
+    def create_app(*args, **kwargs):  # type: ignore[no-untyped-def]
+        app = original(*args, **kwargs)
+
+        @app.get("/healthz")
+        def healthz() -> dict[str, str]:
+            return {"status": "ok"}
+
+        return app
+
+    create_app._spectrace_health = True  # type: ignore[attr-defined]
+    routes.App.create_app = staticmethod(create_app)  # type: ignore[method-assign]
+
+
 def main() -> None:
-    demo.launch(ssr_mode=False, show_api=False, enable_monitoring=False)
+    _install_healthcheck()
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=_listen_port(),
+        ssr_mode=False,
+        show_api=False,
+        enable_monitoring=False,
+    )
 
 
 if __name__ == "__main__":

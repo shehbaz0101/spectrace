@@ -1,3 +1,3 @@
-# Hugging Face Space, free CPU tier. spectrace itself has no third-party dependencies.
-# Pin matches the sdk_version in README.md front matter.
+# Render web service. spectrace itself has no third-party dependencies.
+# Pin the Gradio version the demo was verified against.
 gradio==5.50.0
